@@ -167,8 +167,8 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={(val) => { if (val === false && phase !== null) return; onOpenChange(val); }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="font-serif text-2xl">
             {initial ? "Edit item" : "Add item"}
