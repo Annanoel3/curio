@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, X, Loader2, ImageIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, X, Loader2, ImageIcon, RotateCw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -8,6 +8,14 @@ export default function ItemGallery({ item, onAddImage, onRemoveImage, canEdit =
   const [current, setCurrent] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [direction, setDirection] = useState(1);
+  const [rotations, setRotations] = useState({});
+
+  const rotate = () => {
+    setRotations((prev) => ({
+      ...prev,
+      [current]: ((prev[current] || 0) + 90) % 360,
+    }));
+  };
 
   const go = (dir) => {
     setDirection(dir);
@@ -54,7 +62,8 @@ export default function ItemGallery({ item, onAddImage, onRemoveImage, canEdit =
                 transition={{ type: "tween", duration: 0.28 }}
                 src={allImages[current]}
                 alt=""
-                className="w-full h-full object-cover absolute inset-0"
+                className="w-full h-full object-cover absolute inset-0 transition-transform duration-300"
+                style={{ transform: `rotate(${rotations[current] || 0}deg)` }}
                 draggable={false}
               />
             </AnimatePresence>
@@ -83,6 +92,17 @@ export default function ItemGallery({ item, onAddImage, onRemoveImage, canEdit =
                   ))}
                 </div>
               </>
+            )}
+
+            {/* Rotate button */}
+            {canEdit && allImages.length > 0 && (
+              <button
+                onClick={rotate}
+                className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-background/80 backdrop-blur flex items-center justify-center hover:bg-background transition"
+                title="Rotate image"
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+              </button>
             )}
 
             {/* Remove current image (only if it's an extra image — not the primary) */}
