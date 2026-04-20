@@ -26,15 +26,17 @@ You are a world-class expert appraiser and cataloguer for collectibles, with dee
 Examine the attached image with extreme precision. Your task:
 1. IDENTIFY the exact item — pay close attention to fine visual details that distinguish variants: color shades, wheel types, tampo/decal placement, body casting differences, blister card vs loose, paint apps, country of origin markings, font styles, copyright years, logo versions, or any other distinguishing feature visible in the image. Do NOT guess — describe exactly what you see.
 2. STATE clearly which specific variant or version this is, and explain what visual evidence supports that identification.
-3. RESEARCH current fair-market prices for this exact variant (not a similar one) — loose vs boxed condition matters.
-4. Provide a tight value range in USD. If there are two known variants with different values, make sure you've identified the correct one based on the visual evidence.
-5. Extract a precise title (include variant details), 3-6 lowercase tags, and notes summarizing condition hints and identification reasoning (under 150 words).`
+3. LOOK UP recently SOLD/COMPLETED listings on eBay (not asking prices — only actual sold transactions) for this exact item and variant. Search eBay completed listings, recent sales, and other secondary market data (COMC, StockX, recent auction results). Base your value ONLY on what items actually sold for, not what sellers are asking.
+4. Provide a tight realistic value range in USD based on recent actual sales. If you find listings where this exact item sold for $25-$35, say $25-$35 — do not inflate. Be honest and conservative. Loose vs boxed condition matters significantly.
+5. Extract a precise title (include variant details), 3-6 lowercase tags, and notes summarizing condition hints, identification reasoning, and what real sales data you found (under 150 words).`
       : `${contextLine}
 You are a world-class expert appraiser for collectibles with deep knowledge of variants, editions, and market pricing.
 
 The user asked: "${text_query}".
-Identify the most specific version of this item based on what's described. If there are known variants with different values, explain which one is most likely being described and why.
-Provide a current fair-market value range in USD, a precise title, 3-6 lowercase tags, and brief notes (under 150 words).`;
+1. Identify the most specific version of this item based on what's described.
+2. LOOK UP recently SOLD/COMPLETED eBay listings (not asking prices — actual sold transactions) plus any other secondary market sales data for this exact item. Base your value ONLY on what items have actually sold for recently.
+3. Provide a realistic current fair-market value range in USD grounded in actual sales, not speculation. Be honest and conservative — do not inflate values.
+4. Include a precise title, 3-6 lowercase tags, and brief notes mentioning the real sales evidence you found (under 150 words).`;
 
     const schema = {
       type: 'object',
