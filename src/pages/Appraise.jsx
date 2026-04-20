@@ -1,6 +1,7 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { Sparkles, Loader2, Camera, MessageSquare, Upload } from "lucide-react";
+import { Sparkles, Loader2, Camera, MessageSquare, Upload, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,6 +47,9 @@ export default function Appraise() {
   return (
     <div className="max-w-2xl mx-auto px-5 sm:px-8 py-12">
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+        <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6">
+          <ChevronLeft className="w-4 h-4" /> Home
+        </Link>
         <p className="text-xs uppercase tracking-[0.2em] text-accent font-medium mb-2">Powered by AI</p>
         <h1 className="font-serif text-4xl sm:text-5xl font-medium mb-3">Appraise an item</h1>
         <p className="text-muted-foreground mb-10">

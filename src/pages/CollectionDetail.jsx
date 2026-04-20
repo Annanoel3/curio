@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Plus, ChevronLeft, Share2, Pencil, Trash2, ImageIcon, DollarSign } from "lucide-react";
+import { Plus, ChevronLeft, Share2, Pencil, Trash2, ImageIcon, DollarSign, FileUp } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import ItemCard from "@/components/ItemCard";
 import ItemFormDialog from "@/components/ItemFormDialog";
 import CollectionFormDialog from "@/components/CollectionFormDialog";
 import ShareDialog from "@/components/ShareDialog";
+import BulkAddDialog from "@/components/BulkAddDialog";
 import EmptyState from "@/components/EmptyState";
 import { toast } from "sonner";
 
@@ -23,6 +24,7 @@ export default function CollectionDetail() {
   const [showAddItem, setShowAddItem] = useState(false);
   const [showEditCollection, setShowEditCollection] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showBulkAdd, setShowBulkAdd] = useState(false);
   const [collectionData, setCollectionData] = useState(null);
 
   const { data: collection, isLoading: loadingCol } = useQuery({
@@ -128,6 +130,9 @@ export default function CollectionDetail() {
             </Button>
             <Button variant="outline" size="sm" onClick={() => setShowEditCollection(true)} className="gap-1.5">
               <Pencil className="w-3.5 h-3.5" /> Edit
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowBulkAdd(true)} className="gap-1.5">
+              <FileUp className="w-3.5 h-3.5" /> Bulk add
             </Button>
             <Button size="sm" onClick={() => setShowAddItem(true)} className="gap-1.5">
               <Plus className="w-3.5 h-3.5" /> Add item
@@ -258,6 +263,13 @@ export default function CollectionDetail() {
         onOpenChange={setShowShare}
         collection={activeCollection}
         onUpdated={(updated) => setCollectionData(updated)}
+      />
+      <BulkAddDialog
+        open={showBulkAdd}
+        onOpenChange={setShowBulkAdd}
+        collectionId={id}
+        collectionType={activeCollection.type}
+        onSuccess={() => qc.invalidateQueries({ queryKey: ["items", id] })}
       />
     </div>
   );
