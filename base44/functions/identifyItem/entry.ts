@@ -19,14 +19,23 @@ Deno.serve(async (req) => {
 
     const prompt = image_url
       ? `${contextLine}
-You are an expert collectibles identifier. Look at the image and identify the item as precisely as possible.
-Then generate 2-3 SHORT, specific yes/no or multiple-choice questions that would meaningfully affect this item's value.
-Questions should be item-specific — e.g. for a boxed die-cast car: "Does it have the original box?", for a trading card: "Are there any creases or edge wear?".
-Keep questions very brief (under 8 words each). Max 3 questions. Only ask things that genuinely affect price.`
+You are an expert collectibles identifier. Look at the image and identify the EXACT item — include brand, model name, year/series, variant, and packaging type (e.g. "Hot Wheels 2020 Mainline Honda S2000 GReddy #153/250, mint on card blister pack").
+
+CRITICAL: Before writing any questions, determine the PHYSICAL FORMAT of the item (e.g. blister-carded die-cast, loose die-cast, action figure in box, trading card, comic book, etc.). Then generate 2-3 SHORT questions that are SPECIFIC to that physical format and genuinely affect resale value.
+
+Examples by format:
+- Carded blister pack die-cast (e.g. Hot Wheels, Matchbox): "Is the blister bubble intact?", "Any card bends or punctures?", "Wheel axle straight?"
+- Loose die-cast: "Any paint chips or scratches?", "All parts intact?"
+- Trading card: "Any creases or edge wear?", "Surface scratches?"
+- Action figure in box: "Is box unsealed?", "Any box corner damage?"
+
+NEVER ask about card condition if the item is not a trading/sports card. NEVER ask about box condition if there is no box. Match questions to exactly what you see.
+Keep questions under 8 words each. Max 3 questions.`
       : `${contextLine}
 You are an expert collectibles identifier. The user described: "${text_query}".
-Identify the item as precisely as possible, then generate 2-3 SHORT, specific yes/no or multiple-choice questions that would meaningfully affect this item's value.
-Keep questions very brief (under 8 words each). Max 3 questions.`;
+Identify the EXACT item — include brand, model, year/series, variant, and packaging type.
+Determine the physical format, then generate 2-3 SHORT questions specific to that format that affect resale value.
+Keep questions under 8 words each. Max 3 questions.`;
 
     const schema = {
       type: 'object',
