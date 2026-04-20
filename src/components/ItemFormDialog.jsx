@@ -171,10 +171,16 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
 
             {/* Phase: Identifying — simple status text only, no progress bar */}
             {phase === 'identifying' && (
-              <p className="text-[11px] text-muted-foreground text-center mt-2 animate-pulse">
-                Identifying item…
-              </p>
+              <div className="mt-2 text-center">
+                <p className="text-[11px] text-muted-foreground animate-pulse">
+                  Identifying item…
+                </p>
+                <p className="text-[10px] text-muted-foreground/70 mt-1">
+                  This may take a minute or two…
+                </p>
+              </div>
             )}
+
 
             {/* Phase: Appraising — progress bar + status + slow warning */}
             {phase === 'appraising' && (

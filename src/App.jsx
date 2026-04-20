@@ -11,6 +11,7 @@ import CollectionDetail from '@/pages/CollectionDetail';
 import ItemDetail from '@/pages/ItemDetail';
 import Appraise from '@/pages/Appraise';
 import PublicCollection from '@/pages/PublicCollection';
+import Settings from '@/pages/Settings';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -43,6 +44,7 @@ const AuthenticatedApp = () => {
         <Route path="/collections/:id" element={<CollectionDetail />} />
         <Route path="/collections/:collectionId/items/:itemId" element={<ItemDetail />} />
         <Route path="/appraise" element={<Appraise />} />
+        <Route path="/settings" element={<Settings />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />
