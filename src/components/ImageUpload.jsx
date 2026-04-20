@@ -1,9 +1,12 @@
 import React, { useState } from "react";
-import { Upload, Loader2, ImageIcon, X } from "lucide-react";
+import { Upload, Loader2, ImageIcon, X, RotateCw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 export default function ImageUpload({ value, onChange, className = "" }) {
   const [uploading, setUploading] = useState(false);
+  const [rotation, setRotation] = useState(0);
+
+  const handleRotate = () => setRotation((r) => (r + 90) % 360);
 
   const handleFile = async (file) => {
     if (!file) return;
@@ -20,13 +23,25 @@ export default function ImageUpload({ value, onChange, className = "" }) {
     <div className={`relative ${className}`}>
       {value ? (
         <div className="relative rounded-xl overflow-hidden aspect-square bg-secondary group">
-          <img src={value} alt="" className="w-full h-full object-cover" />
+          <img
+            src={value}
+            alt=""
+            className="w-full h-full object-cover transition-transform duration-300"
+            style={{ transform: `rotate(${rotation}deg)` }}
+          />
           <button
             type="button"
-            onClick={() => onChange("")}
-            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-background/90 backdrop-blur flex items-center justify-center hover:bg-background transition"
+            onClick={handleRotate}
+            className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-background/90 backdrop-blur flex items-center justify-center hover:bg-background transition"
           >
-            <X className="w-4 h-4" />
+            <RotateCw className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => { onChange(""); setRotation(0); }}
+            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-background/90 backdrop-blur flex items-center justify-center hover:bg-background transition"
+          >
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       ) : (
