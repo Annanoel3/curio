@@ -80,16 +80,19 @@ Deno.serve(async (req) => {
       ? `${contextLine}
 You are an expert collectibles identifier. Look at the image and identify the EXACT item — include brand, model name, year/series, variant, and packaging type.
 Also output the item's physical_format as one of: "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "comic book", "other".
-Then generate 2-3 SHORT condition questions relevant to that physical format that affect resale value. Keep each question under 8 words.`
+Then generate 2-3 SHORT condition questions relevant to that physical format that affect resale value. Keep each question under 8 words.
+IMPORTANT: Also set confidence to "high" if you are certain of the exact item, "low" if you can only make a general guess, or "unknown" if you cannot identify the item at all. Be honest — do not guess a specific item if you are not sure.`
       : `${contextLine}
 You are an expert collectibles identifier. The user described: "${text_query}".
-Identify the EXACT item and its physical_format. Generate 2-3 SHORT condition questions relevant to that format. Keep each under 8 words.`;
+Identify the EXACT item and its physical_format. Generate 2-3 SHORT condition questions relevant to that format. Keep each under 8 words.
+Set confidence to "high" if you are certain, "low" if you are making a general guess, or "unknown" if you cannot identify it.`;
 
     const schema = {
       type: 'object',
       properties: {
         identified_item: { type: 'string' },
         physical_format: { type: 'string' },
+        confidence: { type: 'string', enum: ['high', 'low', 'unknown'] },
         questions: {
           type: 'array',
           items: {

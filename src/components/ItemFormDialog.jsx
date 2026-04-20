@@ -32,6 +32,8 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [saving, setSaving] = useState(false);
+  const [needsManualTitle, setNeedsManualTitle] = useState(false);
+  const [manualTitle, setManualTitle] = useState("");
 
   const appraising = phase === 'appraising';
 
@@ -57,6 +59,8 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       setIdentifiedItem("");
       setQuestions([]);
       setAnswers({});
+      setNeedsManualTitle(false);
+      setManualTitle("");
     }
   }, [open, initial]);
 
@@ -69,10 +73,23 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
     try {
       const res = await base44.functions.invoke("identifyItem", {
         image_url: data.image_url || undefined,
-        text_query: data.image_url ? undefined : data.title,
+        text_query: data.image_url ? (data.title.trim() || undefined) : data.title,
         collection_type: collectionType,
       });
       const result = res.data;
+      const confidence = result?.confidence || 'high';
+
+      // If AI couldn't confidently identify and user hasn't typed a title, ask them
+      if ((confidence === 'low' || confidence === 'unknown') && !data.title.trim()) {
+        setIdentifiedItem(result?.identified_item || "");
+        setQuestions(result?.questions || []);
+        setAnswers({});
+        setManualTitle("");
+        setNeedsManualTitle(true);
+        setPhase('questions');
+        return;
+      }
+
       setIdentifiedItem(result?.identified_item || "");
       setQuestions(result?.questions || []);
       setAnswers({});
@@ -81,6 +98,15 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
     } catch (e) {
       runAppraisal("", [], "");
     }
+  };
+
+  const handleManualTitleSubmit = () => {
+    if (!manualTitle.trim()) return;
+    // Use the manual title as the item title and re-run identification with it
+    setData(prev => ({ ...prev, title: manualTitle.trim() }));
+    setNeedsManualTitle(false);
+    // Re-run appraisal with the user-provided title as context
+    runAppraisal("", questions.length ? [] : [], manualTitle.trim());
   };
 
   const handleAnswersSubmit = () => {
@@ -195,8 +221,38 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               </div>
             )}
 
+            {/* Phase: Needs manual title — AI couldn't identify */}
+            {phase === 'questions' && needsManualTitle && (
+              <div className="mt-3 p-3 rounded-xl border border-accent/40 bg-accent/5 shadow-sm space-y-3">
+                <p className="text-xs font-medium text-foreground text-center">Help us identify this item</p>
+                <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
+                  We couldn't identify this automatically. What is it?
+                </p>
+                <Input
+                  value={manualTitle}
+                  onChange={(e) => setManualTitle(e.target.value)}
+                  placeholder="e.g. 1967 Hot Wheels Redline…"
+                  className="text-xs h-8"
+                  onKeyDown={(e) => e.key === 'Enter' && handleManualTitleSubmit()}
+                  autoFocus
+                />
+                <p className="text-[9px] text-muted-foreground leading-relaxed">
+                  What's the brand? The model or series name? The year or edition? Any of these help.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleManualTitleSubmit}
+                  disabled={!manualTitle.trim()}
+                  className="w-full gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" /> Continue with Appraisal
+                </Button>
+              </div>
+            )}
+
             {/* Phase: Item-specific questions */}
-            {phase === 'questions' && questions.length > 0 && (
+            {phase === 'questions' && !needsManualTitle && questions.length > 0 && (
               <div className="mt-3 p-3 rounded-xl border border-border bg-card shadow-sm space-y-3">
                 {identifiedItem && (
                   <p className="text-[11px] text-muted-foreground text-center italic">"{identifiedItem}"</p>
