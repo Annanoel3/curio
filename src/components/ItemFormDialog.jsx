@@ -64,7 +64,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
     }
   }, [open, initial]);
 
-  const handleAppraisalClick = () => {
+  const handleAppraisalClick = async () => {
     if (!data.image_url && !data.title.trim()) {
       toast.error("Add a photo or title first");
       return;
