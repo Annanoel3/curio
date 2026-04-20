@@ -35,10 +35,6 @@ const AuthenticatedApp = () => {
 
   return (
     <Routes>
-      {/* Public share page — no layout/auth */}
-      <Route path="/share/:token" element={<PublicCollection />} />
-
-      {/* Authenticated layout */}
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
         <Route path="/collections/:id" element={<CollectionDetail />} />
@@ -54,14 +50,25 @@ const AuthenticatedApp = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClientInstance}>
+      <Router>
+        <Routes>
+          {/* Fully public — no auth wrapper at all */}
+          <Route path="/share/:token" element={<PublicCollection />} />
+
+          {/* Everything else requires auth */}
+          <Route
+            path="*"
+            element={
+              <AuthProvider>
+                <AuthenticatedApp />
+                <Toaster />
+              </AuthProvider>
+            }
+          />
+        </Routes>
+      </Router>
+    </QueryClientProvider>
   );
 }
 
