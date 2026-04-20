@@ -24,7 +24,27 @@ const empty = {
 export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, collectionType }) {
   const [data, setData] = useState(empty);
   const [appraising, setAppraising] = useState(false);
+  const [appraisalStatus, setAppraisalStatus] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const APPRAISAL_STEPS = [
+    "Identifying item…",
+    "Checking variants & editions…",
+    "Researching market prices…",
+    "Estimating value…",
+    "Adding details…",
+  ];
+
+  useEffect(() => {
+    if (!appraising) { setAppraisalStatus(""); return; }
+    let i = 0;
+    setAppraisalStatus(APPRAISAL_STEPS[0]);
+    const interval = setInterval(() => {
+      i = (i + 1) % APPRAISAL_STEPS.length;
+      setAppraisalStatus(APPRAISAL_STEPS[i]);
+    }, 2200);
+    return () => clearInterval(interval);
+  }, [appraising]);
 
   useEffect(() => {
     if (open) setData(initial || empty);
@@ -107,6 +127,11 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               )}
               AI Appraise
             </Button>
+            {appraisalStatus && (
+              <p className="text-[11px] text-muted-foreground text-center mt-1.5 animate-pulse">
+                {appraisalStatus}
+              </p>
+            )}
           </div>
 
           <div className="space-y-4">

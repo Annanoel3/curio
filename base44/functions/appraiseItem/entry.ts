@@ -21,13 +21,20 @@ Deno.serve(async (req) => {
 
     const prompt = image_url
       ? `${contextLine}
-You are an expert appraiser for collectibles. Look at the attached image and identify the item.
-Then provide a ballpark fair-market value range in USD. Be honest about uncertainty.
-Also extract a concise title, 3-6 relevant tags (lowercase, short), and any notable attributes (era, maker, material, condition hints, etc).
-Keep notes under 120 words.`
+You are a world-class expert appraiser and cataloguer for collectibles, with deep knowledge of subtle variants, production runs, and edition differences.
+
+Examine the attached image with extreme precision. Your task:
+1. IDENTIFY the exact item — pay close attention to fine visual details that distinguish variants: color shades, wheel types, tampo/decal placement, body casting differences, blister card vs loose, paint apps, country of origin markings, font styles, copyright years, logo versions, or any other distinguishing feature visible in the image. Do NOT guess — describe exactly what you see.
+2. STATE clearly which specific variant or version this is, and explain what visual evidence supports that identification.
+3. RESEARCH current fair-market prices for this exact variant (not a similar one) — loose vs boxed condition matters.
+4. Provide a tight value range in USD. If there are two known variants with different values, make sure you've identified the correct one based on the visual evidence.
+5. Extract a precise title (include variant details), 3-6 lowercase tags, and notes summarizing condition hints and identification reasoning (under 150 words).`
       : `${contextLine}
-You are an expert appraiser for collectibles. The user asked: "${text_query}".
-Provide a ballpark fair-market value range in USD for the described item, and a concise title, 3-6 lowercase tags, and brief notes (under 120 words).`;
+You are a world-class expert appraiser for collectibles with deep knowledge of variants, editions, and market pricing.
+
+The user asked: "${text_query}".
+Identify the most specific version of this item based on what's described. If there are known variants with different values, explain which one is most likely being described and why.
+Provide a current fair-market value range in USD, a precise title, 3-6 lowercase tags, and brief notes (under 150 words).`;
 
     const schema = {
       type: 'object',
