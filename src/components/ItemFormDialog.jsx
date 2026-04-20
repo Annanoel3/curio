@@ -11,8 +11,6 @@ import TagInput from "@/components/TagInput";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 
-const CONDITIONS = ["Mint in Box", "Near Mint", "Good", "Played With / Loose", "Poor / Damaged"];
-
 const empty = {
   title: "",
   notes: "",
@@ -30,7 +28,6 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
   const [phase, setPhase] = useState(null);
   const [appraisalStatus, setAppraisalStatus] = useState("");
   const [progress, setProgress] = useState(0);
-  const [condition, setCondition] = useState("");
   const [identifiedItem, setIdentifiedItem] = useState("");
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
@@ -61,7 +58,6 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
     if (open) {
       setData(initial || empty);
       setPhase(null);
-      setCondition("");
       setIdentifiedItem("");
       setQuestions([]);
       setAnswers({});
@@ -73,11 +69,6 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       toast.error("Add a photo or title first");
       return;
     }
-    setPhase('condition');
-  };
-
-  const handleConditionSelect = async (selectedCondition) => {
-    setCondition(selectedCondition);
     setPhase('identifying');
     try {
       const res = await base44.functions.invoke("identifyItem", {
@@ -92,8 +83,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       setProgress(100);
       setPhase('questions');
     } catch (e) {
-      // If identification fails, skip straight to appraisal
-      runAppraisal(selectedCondition, [], "");
+      runAppraisal("", [], "");
     }
   };
 
@@ -102,7 +92,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       question: q.question,
       answer: answers[q.id] ?? "Not answered",
     }));
-    runAppraisal(condition, conditionAnswers, identifiedItem);
+    runAppraisal("", conditionAnswers, identifiedItem);
   };
 
   const runAppraisal = async (selectedCondition, conditionAnswers = [], identified = "") => {
@@ -183,25 +173,6 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               AI Appraise
             </Button>
 
-            {/* Phase: Condition picker */}
-            {phase === 'condition' && (
-              <div className="mt-3 p-3 rounded-xl border border-border bg-card shadow-sm">
-                <p className="text-xs font-medium mb-2 text-center">What's the condition?</p>
-                <div className="flex flex-col gap-1.5">
-                  {CONDITIONS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => handleConditionSelect(c)}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-border hover:border-foreground/40 hover:bg-secondary text-left transition"
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Phase: Identifying / Appraising progress */}
             {appraising && (
               <div className="mt-3">
@@ -250,11 +221,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               </div>
             )}
 
-            {condition && phase === null && (
-              <p className="text-[11px] text-muted-foreground text-center mt-2">
-                Condition: <span className="text-foreground font-medium">{condition}</span>
-              </p>
-            )}
+
           </div>
 
           <div className="space-y-4">
