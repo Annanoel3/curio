@@ -23,7 +23,14 @@
     },
     "image_url": {
       "type": "string",
-      "description": "URL of the item's photo"
+      "description": "URL of the item's primary photo"
+    },
+    "extra_images": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Additional photo URLs for the gallery"
     },
     "estimated_value": {
       "type": "number",

@@ -2,11 +2,12 @@ import React, { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { ChevronLeft, Pencil, Trash2, Sparkles, ImageIcon } from "lucide-react";
+import { ChevronLeft, Pencil, Trash2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import ItemFormDialog from "@/components/ItemFormDialog";
+import ItemGallery from "@/components/ItemGallery";
 import { toast } from "sonner";
 
 const fmt = (n) =>
@@ -91,16 +92,19 @@ export default function ItemDetail() {
         animate={{ opacity: 1, y: 0 }}
         className="grid md:grid-cols-2 gap-10"
       >
-        {/* Image */}
-        <div className="rounded-2xl overflow-hidden bg-secondary aspect-square">
-          {item.image_url ? (
-            <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <ImageIcon className="w-12 h-12 text-muted-foreground/40" />
-            </div>
-          )}
-        </div>
+        {/* Gallery */}
+        <ItemGallery
+          item={item}
+          canEdit={true}
+          onAddImage={(url) => {
+            const extras = [...(item.extra_images || []), url];
+            updateItem.mutate({ extra_images: extras });
+          }}
+          onRemoveImage={(index) => {
+            const extras = (item.extra_images || []).filter((_, i) => i !== index);
+            updateItem.mutate({ extra_images: extras });
+          }}
+        />
 
         {/* Details */}
         <div className="flex flex-col gap-6">
