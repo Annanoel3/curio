@@ -1,162 +1,144 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { Library, ImageIcon, Sparkles } from "lucide-react";
+import { Library, ImageIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
+
+const fmt = (n) =>
+  n != null && !isNaN(n)
+    ? `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+    : null;
+
+function PublicItemCard({ item, index }) {
+  const val = fmt(item.estimated_value) ||
+    (item.value_low && item.value_high
+      ? `${fmt(item.value_low)}–${fmt(item.value_high)}`
+      : null);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04 }}
+      className="rounded-xl overflow-hidden bg-card border border-border/60"
+    >
+      <div className="aspect-square bg-secondary relative overflow-hidden">
+        {item.image_url ? (
+          <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
+          </div>
+        )}
+        {val && (
+          <div className="absolute bottom-2 left-2 text-[11px] font-medium bg-foreground text-background px-2 py-0.5 rounded-full">
+            {val}
+          </div>
+        )}
+      </div>
+      <div className="p-3.5">
+        <h4 className="font-medium text-sm line-clamp-1">{item.title}</h4>
+        {item.tags?.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {item.tags.slice(0, 3).map((t) => (
+              <Badge key={t} variant="outline" className="text-[10px] px-1.5 py-0 font-normal text-muted-foreground">
+                {t}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
 
 export default function PublicCollection() {
   const { token } = useParams();
   const [collection, setCollection] = useState(null);
   const [items, setItems] = useState([]);
-  const [state, setState] = useState("loading");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    const load = async () => {
+    async function load() {
       try {
-        const matches = await base44.entities.Collection.filter({ share_token: token });
-        const col = matches?.[0];
-        if (!col || !col.is_public) {
-          setState("notfound");
-          return;
-        }
-        const its = await base44.entities.Item.filter(
-          { collection_id: col.id },
-          "-created_date"
-        );
+        const cols = await base44.entities.Collection.filter({ share_token: token, is_public: true });
+        if (!cols.length) { setError(true); setLoading(false); return; }
+        const col = cols[0];
         setCollection(col);
+        const its = await base44.entities.Item.filter({ collection_id: col.id }, "-created_date");
         setItems(its);
-        setState("ready");
       } catch {
-        setState("notfound");
+        setError(true);
+      } finally {
+        setLoading(false);
       }
-    };
+    }
     load();
   }, [token]);
 
-  if (state === "loading") {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-secondary border-t-foreground rounded-full animate-spin" />
       </div>
     );
   }
 
-  if (state === "notfound") {
+  if (error || !collection) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-        <Library className="w-10 h-10 text-muted-foreground/40 mb-4" />
-        <h1 className="font-serif text-3xl mb-2">Collection not found</h1>
-        <p className="text-sm text-muted-foreground">
-          This link may have been removed or made private.
-        </p>
+      <div className="min-h-screen bg-background flex items-center justify-center text-center px-6">
+        <div>
+          <Library className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
+          <h2 className="font-serif text-2xl mb-2">Collection not found</h2>
+          <p className="text-muted-foreground text-sm">This link may have expired or the collection is no longer public.</p>
+        </div>
       </div>
     );
   }
 
-  const totalValue = items.reduce((s, i) => s + (Number(i.estimated_value) || 0), 0);
+  const totalValue = items.reduce((sum, i) => sum + (i.estimated_value || 0), 0);
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border/60">
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 h-14 flex items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-foreground flex items-center justify-center">
-              <Library className="w-3.5 h-3.5 text-background" />
-            </div>
-            <span className="font-serif text-lg font-semibold">Curio</span>
-          </div>
+      {/* Cover */}
+      {collection.cover_image_url && (
+        <div className="h-56 sm:h-72 overflow-hidden">
+          <img src={collection.cover_image_url} alt={collection.name} className="w-full h-full object-cover" />
         </div>
-      </header>
+      )}
 
-      <div className="max-w-6xl mx-auto px-5 sm:px-8 pt-12 pb-16">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="pb-10 mb-10 border-b border-border/60"
-        >
-          <div className="text-xs uppercase tracking-[0.2em] text-accent font-medium mb-3">
+      <div className="max-w-6xl mx-auto px-5 sm:px-8 py-10">
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+          <p className="text-xs uppercase tracking-[0.2em] text-accent font-medium mb-1.5">
             {collection.type} collection
-          </div>
-          <h1 className="font-serif text-5xl font-medium tracking-tight leading-[1.05]">
-            {collection.name}
-          </h1>
+          </p>
+          <h1 className="font-serif text-4xl sm:text-5xl font-medium mb-2">{collection.name}</h1>
           {collection.description && (
-            <p className="text-muted-foreground mt-4 max-w-xl leading-relaxed">
-              {collection.description}
-            </p>
+            <p className="text-muted-foreground max-w-xl mb-3">{collection.description}</p>
           )}
-          <div className="flex items-center gap-4 mt-5 text-xs text-muted-foreground">
-            <span>
-              <span className="font-medium text-foreground">{items.length}</span> items
-            </span>
-            {totalValue > 0 && (
-              <>
-                <span>·</span>
-                <span>
-                  Valued at{" "}
-                  <span className="font-medium text-foreground">
-                    ${totalValue.toLocaleString()}
-                  </span>
-                </span>
-              </>
-            )}
+          <div className="flex gap-4 text-sm text-muted-foreground mb-10">
+            <span>{items.length} {items.length === 1 ? "item" : "items"}</span>
+            {totalValue > 0 && <span>~{fmt(totalValue)} total value</span>}
           </div>
         </motion.div>
 
         {items.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-20">
-            This collection is empty.
-          </p>
+          <p className="text-muted-foreground text-center py-16">This collection has no items yet.</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {items.map((item, i) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 }}
-                className="rounded-xl overflow-hidden bg-card border border-border/70"
-              >
-                <div className="aspect-square bg-secondary relative overflow-hidden">
-                  {item.image_url ? (
-                    <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <ImageIcon className="w-8 h-8 text-muted-foreground/40" />
-                    </div>
-                  )}
-                  {item.estimated_value && (
-                    <div className="absolute bottom-2 left-2 text-[11px] font-medium bg-foreground text-background px-2 py-0.5 rounded-full">
-                      ${Number(item.estimated_value).toLocaleString()}
-                    </div>
-                  )}
-                </div>
-                <div className="p-3.5">
-                  <h4 className="font-medium text-sm line-clamp-1">{item.title}</h4>
-                  {item.tags?.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {item.tags.slice(0, 3).map((t) => (
-                        <Badge
-                          key={t}
-                          variant="outline"
-                          className="text-[10px] px-1.5 py-0 font-normal text-muted-foreground border-border/70"
-                        >
-                          {t}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </motion.div>
+              <PublicItemCard key={item.id} item={item} index={i} />
             ))}
           </div>
         )}
 
-        <div className="mt-20 pt-8 border-t border-border/60 text-center">
-          <p className="text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-            <Sparkles className="w-3 h-3 text-accent" />
-            Curated with Curio
+        <div className="mt-16 text-center">
+          <p className="text-xs text-muted-foreground">
+            Made with{" "}
+            <span className="font-serif italic">Curio</span>
+            {" "}— AI-powered collection management
           </p>
         </div>
       </div>
