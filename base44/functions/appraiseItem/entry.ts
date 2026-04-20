@@ -26,25 +26,28 @@ Deno.serve(async (req) => {
 
     const prompt = image_url
       ? `${contextLine} ${identifiedLine} ${conditionLine} ${answersLine}
-You are a world-class expert appraiser for collectibles with deep knowledge of variants, production years, and edition differences.
+You are a precise, data-driven collectibles appraiser. Your job is to find what this item ACTUALLY sells for — not high, not low, but accurate.
 
-Examine the image. Your task:
-1. CONFIRM the exact item and variant. Note the specific production year/release, packaging version, and any key visual details that distinguish it from similar items. Compare it explicitly to other known variants and explain what makes this one different.
-2. LOOK UP current and recently SOLD/COMPLETED listings across eBay (both active and sold), Mercari, Facebook Marketplace, Walmart, Target, and collector sites. For common/recent items still available at retail, the retail shelf price is a HARD FLOOR — the secondary market cannot sustainably be below what it costs new.
-3. PRICE METHODOLOGY — this is critical: Count how many listings exist at each price point. Use the MODE (most common price) or MEDIAN, never the minimum. Example: if there are 1 listing at $5 and 3 listings at $10.98, the market price is ~$10.98, not $5. A single cheap outlier listing must be IGNORED. Do not average in outliers.
-4. Provide a realistic value range. Do NOT deflate. The estimated_value should reflect where the MAJORITY of listings sit, not the cheapest one. Condition: ${condition || 'assess from image'}.
-5. In appraisal_reasoning: explicitly state how many listings you found at each price, which you used and why, and the retail price if still sold in stores. Minimum 3 sentences.
-6. Extract a precise title with variant/year details, 3-6 lowercase tags, and concise notes (under 120 words).`
+Examine the image. Follow these steps exactly:
+1. IDENTIFY the exact item, variant, year, and packaging.
+2. SEARCH for recently SOLD/COMPLETED listings on eBay (sold filter), Mercari sold, and check Walmart/Target for retail shelf price if still in production.
+3. PRICE DISCIPLINE — critical: List out the individual sold prices you find. Remove the single highest and single lowest as outliers. Take the MEDIAN of the remaining prices. That median is your estimated_value. Do not round up. Do not inflate.
+   - Example: sold prices $5.99, $7.50, $8.99, $9.99, $14.00 → remove $5.99 and $14.00 → median of $7.50, $8.99, $9.99 = $8.99 estimated_value
+   - value_low = the lowest non-outlier sold price, value_high = the highest non-outlier sold price
+4. Condition context: ${condition || 'assess from image'}. Adjust median accordingly if condition is notably above or below average.
+5. In appraisal_reasoning: list the actual sold prices you found, show which you removed as outliers, and state the resulting median. Be specific.
+6. Extract a precise title, 3-6 lowercase tags, and concise notes (under 100 words).`
       : `${contextLine} ${identifiedLine} ${conditionLine} ${answersLine}
-You are a world-class expert appraiser for collectibles.
+You are a precise, data-driven collectibles appraiser. Your job is to find what this item ACTUALLY sells for — not high, not low, but accurate.
 
-Item: "${text_query}". 
-1. Identify the exact variant/version. Compare explicitly to other known variants of the same item and note price differences.
-2. LOOK UP current and recently SOLD/COMPLETED listings on eBay, Mercari, Facebook Marketplace, Walmart, Target, and collector sites. For items still at retail, the shelf price is a HARD FLOOR.
-3. PRICE METHODOLOGY: Count listings at each price point. Use the MODE or MEDIAN — never the minimum. If 1 listing is at $5 and 3 are at $10.98, the market is $10.98. Ignore single cheap outliers completely.
-4. Provide a realistic value range. estimated_value must reflect where the MAJORITY of listings are, not the cheapest. Condition: ${condition || 'not specified'}.
-5. In appraisal_reasoning: state how many listings at each price, which you used and why, and the retail price if still sold in stores.
-6. Include a precise title, 3-6 lowercase tags, and brief notes (under 120 words).`;
+Item: "${text_query}".
+1. Identify the exact variant, year, and packaging.
+2. SEARCH for recently SOLD/COMPLETED listings on eBay (sold filter), Mercari sold, and retail shelf price if still in production.
+3. PRICE DISCIPLINE — critical: List the individual sold prices you find. Remove the single highest and single lowest as outliers. Take the MEDIAN of the remaining prices. That is your estimated_value. Do not round up or inflate.
+   - value_low = lowest non-outlier sold price, value_high = highest non-outlier sold price
+4. Condition: ${condition || 'not specified'}. Adjust if condition is notably above or below average.
+5. In appraisal_reasoning: list the actual sold prices, show which you removed, and state the resulting median.
+6. Include a precise title, 3-6 lowercase tags, and brief notes (under 100 words).`;
 
     const schema = {
       type: 'object',
