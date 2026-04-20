@@ -1,0 +1,35 @@
+{
+  "name": "Collection",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the collection (e.g., 'Vintage Toy Cars')"
+    },
+    "type": {
+      "type": "string",
+      "description": "What the user collects (e.g., 'toy cars', 'pots', 'vinyl records')"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional description of the collection"
+    },
+    "cover_image_url": {
+      "type": "string",
+      "description": "Optional cover image URL"
+    },
+    "is_public": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the collection is shareable via public link"
+    },
+    "share_token": {
+      "type": "string",
+      "description": "Random token used in public share URL"
+    }
+  },
+  "required": [
+    "name",
+    "type"
+  ]
+}

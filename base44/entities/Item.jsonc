@@ -1,0 +1,54 @@
+{
+  "name": "Item",
+  "type": "object",
+  "properties": {
+    "collection_id": {
+      "type": "string",
+      "description": "ID of the parent collection"
+    },
+    "title": {
+      "type": "string",
+      "description": "Title/name of the item"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-form notes about the item"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags for searching/filtering"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "URL of the item's photo"
+    },
+    "estimated_value": {
+      "type": "number",
+      "description": "Estimated value in USD"
+    },
+    "value_low": {
+      "type": "number",
+      "description": "Low end of AI appraisal range"
+    },
+    "value_high": {
+      "type": "number",
+      "description": "High end of AI appraisal range"
+    },
+    "ai_appraisal_notes": {
+      "type": "string",
+      "description": "AI's reasoning for the appraisal"
+    },
+    "attributes": {
+      "type": "object",
+      "description": "Flexible key-value attributes specific to the collectible type",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "collection_id",
+    "title"
+  ]
+}
