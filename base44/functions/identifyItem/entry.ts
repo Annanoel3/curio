@@ -21,15 +21,24 @@ Deno.serve(async (req) => {
       ? `${contextLine}
 You are an expert collectibles identifier. Look at the image and identify the EXACT item — include brand, model name, year/series, variant, and packaging type (e.g. "Hot Wheels 2020 Mainline Honda S2000 GReddy #153/250, mint on card blister pack").
 
-CRITICAL: Before writing any questions, determine the PHYSICAL FORMAT of the item (e.g. blister-carded die-cast, loose die-cast, action figure in box, trading card, comic book, etc.). Then generate 2-3 SHORT questions that are SPECIFIC to that physical format and genuinely affect resale value.
+STEP 1 — IDENTIFY THE PHYSICAL FORMAT from the image. Write it in identified_item (e.g. "Hot Wheels 2020 Mainline Honda S2000 GReddy #153/250 — blister-carded die-cast").
 
-Examples by format:
-- Carded blister pack die-cast (e.g. Hot Wheels, Matchbox): "Is the blister bubble intact?", "Any card bends or punctures?", "Wheel axle straight?"
-- Loose die-cast: "Any paint chips or scratches?", "All parts intact?"
-- Trading card: "Any creases or edge wear?", "Surface scratches?"
-- Action figure in box: "Is box unsealed?", "Any box corner damage?"
+STEP 2 — Based ONLY on that physical format, write 2-3 questions. Use this strict mapping:
 
-NEVER ask about card condition if the item is not a trading/sports card. NEVER ask about box condition if there is no box. Match questions to exactly what you see.
+FORMAT: blister-carded die-cast toy (Hot Wheels, Matchbox, etc.)
+→ ALLOWED questions: blister bubble condition, card backing bends/creases, wheel/axle condition
+→ FORBIDDEN: "card corners", "card surface", any trading-card language
+
+FORMAT: loose die-cast toy
+→ ALLOWED questions: paint chips, scratches, missing parts
+
+FORMAT: trading card / sports card / Pokemon card
+→ ALLOWED questions: creases, edge wear, corners, surface scratches
+
+FORMAT: action figure in box
+→ ALLOWED questions: box seal, box corner damage
+
+DO NOT mix formats. A Hot Wheels blister pack is NOT a trading card — never ask about card corners or card grading for it.
 Keep questions under 8 words each. Max 3 questions.`
       : `${contextLine}
 You are an expert collectibles identifier. The user described: "${text_query}".
@@ -61,7 +70,8 @@ Keep questions under 8 words each. Max 3 questions.`;
     const invokePayload = {
       prompt,
       response_json_schema: schema,
-      model: 'gemini_3_flash',
+      model: 'gemini_3_1_pro',
+      add_context_from_internet: true,
     };
     if (image_url) {
       invokePayload.file_urls = [image_url];
