@@ -1,5 +1,64 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+// Keywords that indicate a question is only appropriate for trading/sports/collectible cards
+const TRADING_CARD_KEYWORDS = [
+  'corner', 'corners', 'centering', 'holo', 'surface scratch', 'print line',
+  'print defect', 'psa', 'bgs', 'grading', 'grade', 'edge wear', 'edge chip'
+];
+
+// Returns true if the identified item is a trading/sports/collectible card
+function isTradingCard(identified) {
+  const lower = (identified || '').toLowerCase();
+  return (
+    lower.includes('trading card') ||
+    lower.includes('sports card') ||
+    lower.includes('pokemon card') ||
+    lower.includes('magic: the gathering') ||
+    lower.includes('yugioh') ||
+    lower.includes('baseball card') ||
+    lower.includes('football card') ||
+    lower.includes('basketball card')
+  );
+}
+
+// Returns true if the identified item is a blister-carded die-cast toy
+function isBlisterDieCast(identified) {
+  const lower = (identified || '').toLowerCase();
+  return (
+    lower.includes('hot wheels') ||
+    lower.includes('matchbox') ||
+    lower.includes('blister') ||
+    lower.includes('die-cast') ||
+    lower.includes('diecast') ||
+    lower.includes('die cast')
+  );
+}
+
+// Filter out questions that don't match the item's physical format
+function filterQuestions(questions, identified) {
+  if (!questions || !questions.length) return questions;
+
+  const tradingCard = isTradingCard(identified);
+  const blisterDieCast = isBlisterDieCast(identified);
+
+  if (blisterDieCast && !tradingCard) {
+    // Remove any trading-card-specific questions
+    return questions.filter(q => {
+      const lower = q.question.toLowerCase();
+      return !TRADING_CARD_KEYWORDS.some(kw => lower.includes(kw));
+    });
+  }
+
+  return questions;
+}
+
+// Fallback questions for blister-carded die-cast when all questions got filtered out
+const BLISTER_DIECAST_FALLBACK = [
+  { id: 'blister', question: 'Is the blister bubble intact?', type: 'yesno' },
+  { id: 'card_bend', question: 'Any card backing bends or creases?', type: 'yesno' },
+  { id: 'wheels', question: 'Do wheels spin freely?', type: 'yesno' },
+];
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -19,37 +78,18 @@ Deno.serve(async (req) => {
 
     const prompt = image_url
       ? `${contextLine}
-You are an expert collectibles identifier. Look at the image and identify the EXACT item — include brand, model name, year/series, variant, and packaging type (e.g. "Hot Wheels 2020 Mainline Honda S2000 GReddy #153/250, mint on card blister pack").
-
-STEP 1 — IDENTIFY THE PHYSICAL FORMAT from the image. Write it in identified_item (e.g. "Hot Wheels 2020 Mainline Honda S2000 GReddy #153/250 — blister-carded die-cast").
-
-STEP 2 — Based ONLY on that physical format, write 2-3 questions. Use this strict mapping:
-
-FORMAT: blister-carded die-cast toy (Hot Wheels, Matchbox, etc.)
-→ ALLOWED questions: blister bubble condition, card backing bends/creases, wheel/axle condition
-→ FORBIDDEN: "card corners", "card surface", any trading-card language
-
-FORMAT: loose die-cast toy
-→ ALLOWED questions: paint chips, scratches, missing parts
-
-FORMAT: trading card / sports card / Pokemon card
-→ ALLOWED questions: creases, edge wear, corners, surface scratches
-
-FORMAT: action figure in box
-→ ALLOWED questions: box seal, box corner damage
-
-DO NOT mix formats. A Hot Wheels blister pack is NOT a trading card — never ask about card corners or card grading for it.
-Keep questions under 8 words each. Max 3 questions.`
+You are an expert collectibles identifier. Look at the image and identify the EXACT item — include brand, model name, year/series, variant, and packaging type.
+Also output the item's physical_format as one of: "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "comic book", "other".
+Then generate 2-3 SHORT condition questions relevant to that physical format that affect resale value. Keep each question under 8 words.`
       : `${contextLine}
 You are an expert collectibles identifier. The user described: "${text_query}".
-Identify the EXACT item — include brand, model, year/series, variant, and packaging type.
-Determine the physical format, then generate 2-3 SHORT questions specific to that format that affect resale value.
-Keep questions under 8 words each. Max 3 questions.`;
+Identify the EXACT item and its physical_format. Generate 2-3 SHORT condition questions relevant to that format. Keep each under 8 words.`;
 
     const schema = {
       type: 'object',
       properties: {
-        identified_item: { type: 'string', description: 'Brief precise identification e.g. "Jada Toys 1:24 Fast & Furious Suki\'s Honda S2000 (2017 packaging)"' },
+        identified_item: { type: 'string' },
+        physical_format: { type: 'string' },
         questions: {
           type: 'array',
           items: {
@@ -78,7 +118,23 @@ Keep questions under 8 words each. Max 3 questions.`;
     }
 
     const result = await base44.integrations.Core.InvokeLLM(invokePayload);
-    return Response.json(result);
+
+    // Post-process: filter out inappropriate questions based on format
+    const identified = result.identified_item || '';
+    const format = (result.physical_format || '').toLowerCase();
+    let questions = result.questions || [];
+
+    const isCard = format.includes('trading card') || isTradingCard(identified);
+    const isDieCast = format.includes('blister') || format.includes('die-cast') || format.includes('diecast') || isBlisterDieCast(identified);
+
+    if (isDieCast && !isCard) {
+      questions = filterQuestions(questions, identified);
+      if (questions.length === 0) {
+        questions = BLISTER_DIECAST_FALLBACK;
+      }
+    }
+
+    return Response.json({ ...result, questions });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
