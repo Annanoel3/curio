@@ -70,7 +70,7 @@ Item: "${text_query}".
     const invokePayload = {
       prompt,
       response_json_schema: schema,
-      model: 'gemini_3_1_pro',
+      model: 'gemini_3_flash',
       add_context_from_internet: true
     };
     if (image_url) {
