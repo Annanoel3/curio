@@ -9,6 +9,9 @@ import { base44 } from "@/api/base44Client";
 import ImageUpload from "@/components/ImageUpload";
 import TagInput from "@/components/TagInput";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
+
+const CONDITIONS = ["Mint in Box", "Near Mint", "Good", "Played With / Loose", "Poor / Damaged"];
 
 const empty = {
   title: "",
@@ -25,24 +28,29 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
   const [data, setData] = useState(empty);
   const [appraising, setAppraising] = useState(false);
   const [appraisalStatus, setAppraisalStatus] = useState("");
+  const [progress, setProgress] = useState(0);
+  const [condition, setCondition] = useState("");
+  const [showConditionPicker, setShowConditionPicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const APPRAISAL_STEPS = [
     "Identifying item…",
     "Checking variants & editions…",
-    "Researching market prices…",
+    "Searching eBay & Mercari sales…",
     "Estimating value…",
     "Adding details…",
   ];
 
   useEffect(() => {
-    if (!appraising) { setAppraisalStatus(""); return; }
+    if (!appraising) { setAppraisalStatus(""); setProgress(0); return; }
     let i = 0;
     setAppraisalStatus(APPRAISAL_STEPS[0]);
+    setProgress(10);
     const interval = setInterval(() => {
-      i = (i + 1) % APPRAISAL_STEPS.length;
+      i = Math.min(i + 1, APPRAISAL_STEPS.length - 1);
       setAppraisalStatus(APPRAISAL_STEPS[i]);
-    }, 2200);
+      setProgress(10 + (i / (APPRAISAL_STEPS.length - 1)) * 80);
+    }, 2800);
     return () => clearInterval(interval);
   }, [appraising]);
 
@@ -50,17 +58,24 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
     if (open) setData(initial || empty);
   }, [open, initial]);
 
-  const runAppraisal = async () => {
+  const handleAppraisalClick = () => {
     if (!data.image_url && !data.title.trim()) {
       toast.error("Add a photo or title first");
       return;
     }
+    setShowConditionPicker(true);
+  };
+
+  const runAppraisal = async (selectedCondition) => {
+    setShowConditionPicker(false);
+    setCondition(selectedCondition);
     setAppraising(true);
     try {
       const res = await base44.functions.invoke("appraiseItem", {
         image_url: data.image_url || undefined,
         text_query: data.image_url ? undefined : data.title,
         collection_type: collectionType,
+        condition: selectedCondition,
       });
       const a = res.data?.appraisal;
       if (!a) throw new Error("No appraisal returned");
@@ -74,6 +89,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
         value_high: a.value_high ?? null,
         ai_appraisal_notes: a.appraisal_reasoning || "",
       }));
+      setProgress(100);
       toast.success("AI appraisal complete");
     } catch (e) {
       toast.error("Appraisal failed");
@@ -116,7 +132,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               type="button"
               variant="outline"
               size="sm"
-              onClick={runAppraisal}
+              onClick={handleAppraisalClick}
               disabled={appraising}
               className="w-full mt-3 gap-1.5"
             >
@@ -127,9 +143,39 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               )}
               AI Appraise
             </Button>
-            {appraisalStatus && (
-              <p className="text-[11px] text-muted-foreground text-center mt-1.5 animate-pulse">
-                {appraisalStatus}
+
+            {/* Condition picker */}
+            {showConditionPicker && (
+              <div className="mt-3 p-3 rounded-xl border border-border bg-card shadow-sm">
+                <p className="text-xs font-medium mb-2 text-center">What's the condition?</p>
+                <div className="flex flex-col gap-1.5">
+                  {CONDITIONS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => runAppraisal(c)}
+                      className="text-xs px-3 py-1.5 rounded-lg border border-border hover:border-foreground/40 hover:bg-secondary text-left transition"
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Progress bar */}
+            {appraising && (
+              <div className="mt-3">
+                <Progress value={progress} className="h-1.5" />
+                <p className="text-[11px] text-muted-foreground text-center mt-1.5 animate-pulse">
+                  {appraisalStatus}
+                </p>
+              </div>
+            )}
+
+            {condition && !appraising && !showConditionPicker && (
+              <p className="text-[11px] text-muted-foreground text-center mt-2">
+                Condition: <span className="text-foreground font-medium">{condition}</span>
               </p>
             )}
           </div>
