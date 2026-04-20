@@ -2,7 +2,8 @@ import React, { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Plus, ChevronLeft, Share2, Pencil, Trash2, ImageIcon } from "lucide-react";
+import { Plus, ChevronLeft, Share2, Pencil, Trash2, ImageIcon, DollarSign } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
@@ -59,6 +60,14 @@ export default function CollectionDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["items", id] });
       toast.success("Item removed");
+    },
+  });
+
+  const markSold = useMutation({
+    mutationFn: (itemId) => base44.entities.Item.update(itemId, { status: "sold" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["items", id] });
+      toast.success("Marked as sold");
     },
   });
 
@@ -190,12 +199,42 @@ export default function CollectionDetail() {
           {filtered.map((item, i) => (
             <div key={item.id} className="relative group">
               <ItemCard item={item} index={i} to={`/collections/${id}/items/${item.id}`} />
-              <button
-                onClick={() => deleteItem.mutate(item.id)}
-                className="absolute top-2 left-2 w-7 h-7 rounded-full bg-background/90 backdrop-blur items-center justify-center hidden group-hover:flex text-muted-foreground hover:text-destructive transition"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {item.status === "sold" && (
+                <div className="absolute top-2 left-2 text-[10px] font-medium bg-foreground/80 text-background px-2 py-0.5 rounded-full pointer-events-none">
+                  Sold
+                </div>
+              )}
+              {item.quantity > 1 && (
+                <div className="absolute top-2 right-2 text-[10px] font-medium bg-foreground/80 text-background px-2 py-0.5 rounded-full pointer-events-none">
+                  ×{item.quantity}
+                </div>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-background/90 backdrop-blur items-center justify-center hidden group-hover:flex text-muted-foreground hover:text-foreground transition">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {item.status !== "sold" && (
+                    <DropdownMenuItem onClick={() => markSold.mutate(item.id)} className="gap-2">
+                      <DollarSign className="w-3.5 h-3.5" /> Mark as sold
+                    </DropdownMenuItem>
+                  )}
+                  {item.status === "sold" && (
+                    <DropdownMenuItem onClick={() => base44.entities.Item.update(item.id, { status: "owned" }).then(() => qc.invalidateQueries({ queryKey: ["items", id] }))} className="gap-2">
+                      <DollarSign className="w-3.5 h-3.5" /> Mark as owned
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => deleteItem.mutate(item.id)}
+                    className="gap-2 text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete item
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           ))}
         </div>

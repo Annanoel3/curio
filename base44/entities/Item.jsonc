@@ -41,6 +41,20 @@
       "type": "string",
       "description": "AI's reasoning for the appraisal"
     },
+    "quantity": {
+      "type": "integer",
+      "default": 1,
+      "description": "How many of this item the user owns"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "owned",
+        "sold"
+      ],
+      "default": "owned",
+      "description": "Whether the item is still owned or has been sold"
+    },
     "attributes": {
       "type": "object",
       "description": "Flexible key-value attributes specific to the collectible type",

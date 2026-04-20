@@ -20,6 +20,8 @@ const empty = {
   value_low: null,
   value_high: null,
   ai_appraisal_notes: "",
+  quantity: 1,
+  status: "owned",
 };
 
 // phase: null | 'condition' | 'identifying' | 'questions' | 'appraising'
@@ -192,7 +194,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               ) : (
                 <Sparkles className="w-3.5 h-3.5 text-accent" />
               )}
-              AI Appraise
+              Fill out with AI
             </Button>
 
             {/* Phase: Identifying — simple status text only, no progress bar */}
@@ -341,6 +343,41 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
                   AI range: ${data.value_low?.toLocaleString()} – ${data.value_high?.toLocaleString()}
                 </p>
               )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
+                  Quantity
+                </Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={data.quantity ?? 1}
+                  onChange={(e) => setData({ ...data, quantity: Math.max(1, parseInt(e.target.value) || 1) })}
+                />
+              </div>
+              <div>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
+                  Status
+                </Label>
+                <div className="flex gap-2">
+                  {["owned", "sold"].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setData({ ...data, status: s })}
+                      className={`flex-1 text-xs py-2 rounded-lg border transition capitalize ${
+                        data.status === s
+                          ? "bg-foreground text-background border-foreground"
+                          : "border-border hover:border-foreground/40 hover:bg-secondary"
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {data.ai_appraisal_notes && (
