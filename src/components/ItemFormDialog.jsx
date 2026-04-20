@@ -33,23 +33,19 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
   const [answers, setAnswers] = useState({});
   const [saving, setSaving] = useState(false);
 
-  const appraising = phase === 'identifying' || phase === 'appraising';
+  const appraising = phase === 'appraising';
 
-  const IDENTIFY_STEPS = ["Identifying item…", "Analyzing details…"];
   const APPRAISE_STEPS = ["Searching eBay & Mercari…", "Checking sold listings…", "Estimating value…", "Adding details…"];
 
   useEffect(() => {
-    if (!appraising) { setAppraisalStatus(""); setProgress(0); return; }
-    const steps = phase === 'identifying' ? IDENTIFY_STEPS : APPRAISE_STEPS;
+    if (phase !== 'appraising') { setAppraisalStatus(""); setProgress(0); return; }
     let i = 0;
-    setAppraisalStatus(steps[0]);
-    setProgress(phase === 'identifying' ? 15 : 10);
+    setAppraisalStatus(APPRAISE_STEPS[0]);
+    setProgress(10);
     const interval = setInterval(() => {
-      i = Math.min(i + 1, steps.length - 1);
-      setAppraisalStatus(steps[i]);
-      setProgress(phase === 'identifying'
-        ? 15 + (i / (steps.length - 1)) * 70
-        : 10 + (i / (steps.length - 1)) * 80);
+      i = Math.min(i + 1, APPRAISE_STEPS.length - 1);
+      setAppraisalStatus(APPRAISE_STEPS[i]);
+      setProgress(10 + (i / (APPRAISE_STEPS.length - 1)) * 80);
     }, 2600);
     return () => clearInterval(interval);
   }, [phase]);
@@ -162,10 +158,10 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               variant="outline"
               size="sm"
               onClick={handleAppraisalClick}
-              disabled={appraising}
+              disabled={phase === 'identifying' || phase === 'appraising'}
               className="w-full mt-3 gap-1.5"
             >
-              {appraising ? (
+              {(phase === 'identifying' || phase === 'appraising') ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
                 <Sparkles className="w-3.5 h-3.5 text-accent" />
@@ -173,12 +169,22 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               AI Appraise
             </Button>
 
-            {/* Phase: Identifying / Appraising progress */}
-            {appraising && (
+            {/* Phase: Identifying — simple status text only, no progress bar */}
+            {phase === 'identifying' && (
+              <p className="text-[11px] text-muted-foreground text-center mt-2 animate-pulse">
+                Identifying item…
+              </p>
+            )}
+
+            {/* Phase: Appraising — progress bar + status + slow warning */}
+            {phase === 'appraising' && (
               <div className="mt-3">
                 <Progress value={progress} className="h-1.5" />
                 <p className="text-[11px] text-muted-foreground text-center mt-1.5 animate-pulse">
                   {appraisalStatus}
+                </p>
+                <p className="text-[10px] text-muted-foreground/70 text-center mt-1">
+                  This may take a minute or two…
                 </p>
               </div>
             )}
