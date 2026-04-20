@@ -9,37 +9,40 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { image_url, text_query, collection_type, condition } = body;
+    const { image_url, text_query, collection_type, condition, condition_answers, identified_item } = body;
 
     if (!image_url && !text_query) {
       return Response.json({ error: 'Provide image_url or text_query' }, { status: 400 });
     }
 
-    const contextLine = collection_type
-      ? `The user collects: ${collection_type}.`
-      : '';
+    const contextLine = collection_type ? `The user collects: ${collection_type}.` : '';
     const conditionLine = condition
       ? `The item's condition is: ${condition}. Value it specifically for this condition — do not assume a different condition.`
       : '';
+    const identifiedLine = identified_item ? `This item has already been identified as: ${identified_item}.` : '';
+    const answersLine = condition_answers && condition_answers.length
+      ? `Additional condition details provided by the user: ${condition_answers.map(a => `${a.question}: ${a.answer}`).join('; ')}.`
+      : '';
 
     const prompt = image_url
-      ? `${contextLine} ${conditionLine}
-You are a world-class expert appraiser and cataloguer for collectibles, with deep knowledge of subtle variants, production runs, and edition differences.
+      ? `${contextLine} ${identifiedLine} ${conditionLine} ${answersLine}
+You are a world-class expert appraiser for collectibles with deep knowledge of variants, production years, and edition differences.
 
-Examine the attached image with extreme precision. Your task:
-1. IDENTIFY the exact item — pay close attention to fine visual details that distinguish variants: color shades, wheel types, tampo/decal placement, body casting differences, blister card vs loose, paint apps, country of origin markings, font styles, copyright years, logo versions, or any other distinguishing feature visible in the image. Do NOT guess — describe exactly what you see.
-2. STATE clearly which specific variant or version this is, and explain what visual evidence supports that identification.
-3. LOOK UP recently SOLD/COMPLETED listings across multiple marketplaces: eBay completed listings, Mercari sold listings, Facebook Marketplace recent sales, Amazon sold listings, specialty collector sites (e.g. hobbyDB, BigBadToyStore, BBTS, Entertainment Earth), and any relevant auction results. Do NOT use asking prices — only actual completed sales. Cross-reference at least 2-3 sources. If you only find a small number of listings (e.g. 2 listings at $30), that IS the market — report it accurately. Do not average down with assumed lower prices that aren't supported by data.
-4. Provide a realistic value range in USD based on the actual sales you find. If listings are clustered around $30, your range should reflect that (e.g. $25–$35). Do not under-report. Condition provided by the user is: ${condition || 'unknown — use visual cues from the image'}.
-5. Extract a precise title (include variant details), 3-6 lowercase tags, and notes summarizing identification reasoning and actual sales evidence found (under 150 words).`
-      : `${contextLine} ${conditionLine}
-You are a world-class expert appraiser for collectibles with deep knowledge of variants, editions, and market pricing.
+Examine the image. Your task:
+1. CONFIRM the exact item and variant. Note the specific production year/release, packaging version, and any key visual details that distinguish it from similar items. Compare it explicitly to other known variants and explain what makes this one different.
+2. LOOK UP recently SOLD/COMPLETED listings across eBay completed listings, Mercari, Facebook Marketplace, and collector sites. Only actual sales — not asking prices. If only a few listings exist (e.g. 2 at $30), that IS the market.
+3. Provide a realistic value range reflecting actual sales. Do not deflate. Condition: ${condition || 'assess from image'}.
+4. In appraisal_reasoning: be SPECIFIC — mention the exact release year, how it compares to other variants/years of the same item and their prices, what sales data you found, and why this item is valued where it is. Minimum 3 sentences of specific detail.
+5. Extract a precise title with variant/year details, 3-6 lowercase tags, and concise notes (under 120 words).`
+      : `${contextLine} ${identifiedLine} ${conditionLine} ${answersLine}
+You are a world-class expert appraiser for collectibles.
 
-The user asked: "${text_query}". Condition: ${condition || 'not specified'}.
-1. Identify the most specific version of this item based on what's described.
-2. LOOK UP recently SOLD/COMPLETED listings across eBay, Mercari, Facebook Marketplace, Amazon, and collector specialty sites — actual sold transactions only, not asking prices. Cross-reference multiple sources. If there are only a few listings, report the price those actually sold for — do not invent lower prices.
-3. Provide a realistic fair-market value range in USD that accurately reflects what you find. Do not deflate — if items sell for $30, say $30.
-4. Include a precise title, 3-6 lowercase tags, and brief notes mentioning the cross-platform sales evidence (under 150 words).`;
+Item: "${text_query}". 
+1. Identify the exact variant/version. Compare explicitly to other known variants of the same item and note price differences.
+2. LOOK UP recently SOLD/COMPLETED listings on eBay, Mercari, Facebook Marketplace, and collector sites — actual sales only. Do not deflate.
+3. Provide a realistic value range. Condition: ${condition || 'not specified'}.
+4. In appraisal_reasoning: be SPECIFIC — note the exact release, how it compares to other variants price-wise, what sales data supports the value.
+5. Include a precise title, 3-6 lowercase tags, and brief notes (under 120 words).`;
 
     const schema = {
       type: 'object',

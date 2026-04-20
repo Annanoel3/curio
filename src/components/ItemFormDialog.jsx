@@ -24,38 +24,48 @@ const empty = {
   ai_appraisal_notes: "",
 };
 
+// phase: null | 'condition' | 'identifying' | 'questions' | 'appraising'
 export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, collectionType }) {
   const [data, setData] = useState(empty);
-  const [appraising, setAppraising] = useState(false);
+  const [phase, setPhase] = useState(null);
   const [appraisalStatus, setAppraisalStatus] = useState("");
   const [progress, setProgress] = useState(0);
   const [condition, setCondition] = useState("");
-  const [showConditionPicker, setShowConditionPicker] = useState(false);
+  const [identifiedItem, setIdentifiedItem] = useState("");
+  const [questions, setQuestions] = useState([]);
+  const [answers, setAnswers] = useState({});
   const [saving, setSaving] = useState(false);
 
-  const APPRAISAL_STEPS = [
-    "Identifying item…",
-    "Checking variants & editions…",
-    "Searching eBay & Mercari sales…",
-    "Estimating value…",
-    "Adding details…",
-  ];
+  const appraising = phase === 'identifying' || phase === 'appraising';
+
+  const IDENTIFY_STEPS = ["Identifying item…", "Analyzing details…"];
+  const APPRAISE_STEPS = ["Searching eBay & Mercari…", "Checking sold listings…", "Estimating value…", "Adding details…"];
 
   useEffect(() => {
     if (!appraising) { setAppraisalStatus(""); setProgress(0); return; }
+    const steps = phase === 'identifying' ? IDENTIFY_STEPS : APPRAISE_STEPS;
     let i = 0;
-    setAppraisalStatus(APPRAISAL_STEPS[0]);
-    setProgress(10);
+    setAppraisalStatus(steps[0]);
+    setProgress(phase === 'identifying' ? 15 : 10);
     const interval = setInterval(() => {
-      i = Math.min(i + 1, APPRAISAL_STEPS.length - 1);
-      setAppraisalStatus(APPRAISAL_STEPS[i]);
-      setProgress(10 + (i / (APPRAISAL_STEPS.length - 1)) * 80);
-    }, 2800);
+      i = Math.min(i + 1, steps.length - 1);
+      setAppraisalStatus(steps[i]);
+      setProgress(phase === 'identifying'
+        ? 15 + (i / (steps.length - 1)) * 70
+        : 10 + (i / (steps.length - 1)) * 80);
+    }, 2600);
     return () => clearInterval(interval);
-  }, [appraising]);
+  }, [phase]);
 
   useEffect(() => {
-    if (open) setData(initial || empty);
+    if (open) {
+      setData(initial || empty);
+      setPhase(null);
+      setCondition("");
+      setIdentifiedItem("");
+      setQuestions([]);
+      setAnswers({});
+    }
   }, [open, initial]);
 
   const handleAppraisalClick = () => {
@@ -63,19 +73,48 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       toast.error("Add a photo or title first");
       return;
     }
-    setShowConditionPicker(true);
+    setPhase('condition');
   };
 
-  const runAppraisal = async (selectedCondition) => {
-    setShowConditionPicker(false);
+  const handleConditionSelect = async (selectedCondition) => {
     setCondition(selectedCondition);
-    setAppraising(true);
+    setPhase('identifying');
+    try {
+      const res = await base44.functions.invoke("identifyItem", {
+        image_url: data.image_url || undefined,
+        text_query: data.image_url ? undefined : data.title,
+        collection_type: collectionType,
+      });
+      const result = res.data;
+      setIdentifiedItem(result?.identified_item || "");
+      setQuestions(result?.questions || []);
+      setAnswers({});
+      setProgress(100);
+      setPhase('questions');
+    } catch (e) {
+      // If identification fails, skip straight to appraisal
+      runAppraisal(selectedCondition, [], "");
+    }
+  };
+
+  const handleAnswersSubmit = () => {
+    const conditionAnswers = questions.map(q => ({
+      question: q.question,
+      answer: answers[q.id] ?? "Not answered",
+    }));
+    runAppraisal(condition, conditionAnswers, identifiedItem);
+  };
+
+  const runAppraisal = async (selectedCondition, conditionAnswers = [], identified = "") => {
+    setPhase('appraising');
     try {
       const res = await base44.functions.invoke("appraiseItem", {
         image_url: data.image_url || undefined,
         text_query: data.image_url ? undefined : data.title,
         collection_type: collectionType,
         condition: selectedCondition,
+        condition_answers: conditionAnswers,
+        identified_item: identified,
       });
       const a = res.data?.appraisal;
       if (!a) throw new Error("No appraisal returned");
@@ -94,7 +133,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
     } catch (e) {
       toast.error("Appraisal failed");
     } finally {
-      setAppraising(false);
+      setPhase(null);
     }
   };
 
@@ -144,8 +183,8 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               AI Appraise
             </Button>
 
-            {/* Condition picker */}
-            {showConditionPicker && (
+            {/* Phase: Condition picker */}
+            {phase === 'condition' && (
               <div className="mt-3 p-3 rounded-xl border border-border bg-card shadow-sm">
                 <p className="text-xs font-medium mb-2 text-center">What's the condition?</p>
                 <div className="flex flex-col gap-1.5">
@@ -153,7 +192,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
                     <button
                       key={c}
                       type="button"
-                      onClick={() => runAppraisal(c)}
+                      onClick={() => handleConditionSelect(c)}
                       className="text-xs px-3 py-1.5 rounded-lg border border-border hover:border-foreground/40 hover:bg-secondary text-left transition"
                     >
                       {c}
@@ -163,7 +202,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               </div>
             )}
 
-            {/* Progress bar */}
+            {/* Phase: Identifying / Appraising progress */}
             {appraising && (
               <div className="mt-3">
                 <Progress value={progress} className="h-1.5" />
@@ -173,7 +212,45 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               </div>
             )}
 
-            {condition && !appraising && !showConditionPicker && (
+            {/* Phase: Item-specific questions */}
+            {phase === 'questions' && questions.length > 0 && (
+              <div className="mt-3 p-3 rounded-xl border border-border bg-card shadow-sm space-y-3">
+                {identifiedItem && (
+                  <p className="text-[11px] text-muted-foreground text-center italic">"{identifiedItem}"</p>
+                )}
+                {questions.map((q) => (
+                  <div key={q.id}>
+                    <p className="text-xs font-medium mb-1.5">{q.question}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(q.type === 'yesno' ? ['Yes', 'No'] : q.options || []).map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => setAnswers(prev => ({ ...prev, [q.id]: opt }))}
+                          className={`text-xs px-3 py-1 rounded-full border transition ${
+                            answers[q.id] === opt
+                              ? 'bg-foreground text-background border-foreground'
+                              : 'border-border hover:border-foreground/40 hover:bg-secondary'
+                          }`}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAnswersSubmit}
+                  className="w-full mt-1 gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" /> Get Appraisal
+                </Button>
+              </div>
+            )}
+
+            {condition && phase === null && (
               <p className="text-[11px] text-muted-foreground text-center mt-2">
                 Condition: <span className="text-foreground font-medium">{condition}</span>
               </p>
