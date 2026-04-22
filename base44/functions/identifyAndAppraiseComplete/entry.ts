@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { phase, image_urls, text_query, collection_type, condition_answers, identified_item, known_size } = body;
+    const { phase, image_urls, text_query, collection_type, condition_answers, identified_item, known_size, user_notes } = body;
 
     const allImageUrls = image_urls?.length ? image_urls : [];
 
@@ -29,18 +29,32 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Provide image_urls or text_query' }, { status: 400 });
       }
 
+      const userNotesLine = user_notes ? `\nIMPORTANT — User-provided details (treat as confirmed ground truth, override visual assumptions with these): "${user_notes}"` : '';
+
       const identifyPrompt = allImageUrls.length
-        ? `${contextLine} ${knownSizeLine} ${multiImageNote}
-You are an expert collectibles identifier. Examine the image(s) and:
-1. Identify the EXACT item (brand, model name, year/series, variant). Be specific.
-2. Determine the physical_format: one of "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "pottery/ceramics", "flatware/cutlery", "other".
-3. Generate 2-3 short condition questions that affect resale value. For items made in multiple sizes, ask about height FIRST with known size options as choices, always include "Other / I'll measure" as last option.
-Set confidence to "high" if certain of exact model, "low" if only brand/category is clear.`
-        : `${contextLine} ${knownSizeLine}
+        ? `${contextLine} ${knownSizeLine} ${multiImageNote}${userNotesLine}
+You are an expert collectibles identifier with deep knowledge of antiques, flatware, ceramics, die-cast, and collectibles.
+
+STEP 1 — MANDATORY PHYSICAL COUNT (do this before anything else):
+- Count every countable structural feature: tines on a fork, petals on a flower, legs, panels, etc. State the exact count explicitly (e.g. "I count 5 tines"). If the user's notes confirm a count, use that as ground truth.
+- A standard dinner fork has 4 tines. A 5-tine fork is a RARE, distinct collectible variant — do NOT assume 4 tines unless you have counted 4.
+- For any non-standard count, flag it prominently — it IS the key identifier.
+
+STEP 2 — VISUAL ANALYSIS: Examine every detail: shape, silhouette, surface decoration, base/foot style, any marks/signatures/hallmarks (read ALL text exactly), color, finish, unusual features.
+
+STEP 3 — IDENTIFY the EXACT model/variant using your physical count + visual analysis. Include brand, exact model name, model number if known, year/series. Do NOT default to the most common version if physical features suggest otherwise.
+
+STEP 4 — physical_format: one of "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "pottery/ceramics", "flatware/cutlery", "other".
+
+STEP 5 — Generate 2-3 condition questions that affect resale value. For items made in multiple sizes, ask height FIRST with known size options as choices, always include "Other / I'll measure" as last option.
+
+Set confidence to "high" if certain of exact model/variant, "low" if only brand/category is clear.`
+        : `${contextLine} ${knownSizeLine}${userNotesLine}
 You are an expert collectibles identifier. The user described: "${text_query}".
-1. Identify the EXACT item (brand, model name, year/series, variant).
+CRITICAL: If the description or user notes mention any non-standard physical feature (e.g. "5 tines", "5 prong", unusual size, rare marking) — treat this as confirmed ground truth and identify the item AS that specific variant, not the standard version.
+1. Identify the EXACT item (brand, model name, year/series, variant). Be specific.
 2. Determine the physical_format.
-3. Generate 2-3 short condition questions that affect resale value.
+3. Generate 2-3 condition questions that affect resale value.
 Set confidence to "high" if certain, "low" if making a general guess.`;
 
       const identifySchema = {
@@ -111,8 +125,9 @@ Set confidence to "high" if certain, "low" if making a general guess.`;
       const answersLine = condition_answers?.length
         ? `User-confirmed condition details (treat as ground truth): ${condition_answers.map(a => `${a.question}: ${a.answer}`).join('; ')}.`
         : '';
+      const userNotesLine = user_notes ? `Additional user notes (treat as ground truth): "${user_notes}".` : '';
 
-      const appraisePrompt = `Collectibles appraiser. Item: "${itemName}". ${answersLine} ${contextLine}
+      const appraisePrompt = `Collectibles appraiser. Item: "${itemName}". ${answersLine} ${userNotesLine} ${contextLine}
 Give estimated_value (median eBay/Mercari sold price), value_low, value_high, title, 3-6 lowercase tags, notes (under 60 words), appraisal_reasoning (1-2 sentences). Adjust for condition above.`;
 
       const appraiseSchema = {

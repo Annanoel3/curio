@@ -66,6 +66,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
   const [extraIdentifyImages, setExtraIdentifyImages] = useState([]);
   const [uploadingExtra, setUploadingExtra] = useState(false);
   const [customSizeInput, setCustomSizeInput] = useState({});  // { [questionId]: string }
+  const [userNotes, setUserNotes] = useState("");
 
   const appraising = phase === 'appraising';
 
@@ -95,6 +96,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       setManualTitle("");
       setExtraIdentifyImages([]);
       setCustomSizeInput({});
+      setUserNotes("");
     }
   }, [open, initial]);
 
@@ -111,6 +113,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
         image_urls: allImages.length ? allImages : undefined,
         text_query: !allImages.length ? data.title : (data.title.trim() || undefined),
         collection_type: collectionType,
+        user_notes: userNotes.trim() || undefined,
       });
       const result = res.data;
       const confidence = result?.confidence || 'high';
@@ -209,6 +212,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
         condition_answers: conditionAnswers,
         identified_item: identifiedItem,
         known_size: hadOtherSize ? customSizeInput[sizeQ.id].trim() : undefined,
+        user_notes: userNotes.trim() || undefined,
       });
       setData((prev) => ({
         ...prev,
@@ -414,6 +418,16 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
                     )}
                   </div>
                 ))}
+                <div>
+                  <p className="text-xs font-medium mb-1.5">Anything special about this item?</p>
+                  <textarea
+                    value={userNotes}
+                    onChange={(e) => setUserNotes(e.target.value)}
+                    placeholder="e.g. has 5 tines, missing original box, signed on base…"
+                    className="w-full text-xs rounded-md border border-input bg-transparent px-3 py-2 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                    rows={2}
+                  />
+                </div>
                 <Button
                   type="button"
                   size="sm"
