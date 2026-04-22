@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
       : '';
     const identifiedLine = identified_item ? `This item has already been identified as: ${identified_item}.` : '';
     const answersLine = condition_answers && condition_answers.length
-      ? `Additional condition details provided by the user: ${condition_answers.map(a => `${a.question}: ${a.answer}`).join('; ')}.`
+      ? `Additional details confirmed by the user (treat these as ground truth — do NOT override them with assumptions): ${condition_answers.map(a => `${a.question}: ${a.answer}`).join('; ')}.`
       : '';
 
     const multiImageNote = allImageUrls.length > 1

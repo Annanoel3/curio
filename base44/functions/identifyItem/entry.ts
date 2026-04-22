@@ -27,11 +27,23 @@ Deno.serve(async (req) => {
       ? `${contextLine} ${multiImageNote}
 You are an expert collectibles identifier. Look at the image(s) and identify the EXACT item — include brand, model name, year/series, variant, and packaging type.
 Also output the item's physical_format as one of: "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "comic book", "pottery/ceramics", "other".
-Then generate 2-3 SHORT condition questions relevant to that physical format that affect resale value. Keep each question under 8 words.
+
+Then generate 2-4 SHORT questions relevant to that physical format that affect resale value. Keep each question under 10 words.
+
+IMPORTANT — Size questions:
+- If this item was manufactured in multiple sizes (e.g. a vase, figurine, or sculpture that came in 4", 6", 8", 10" versions), you MUST include a size/height question as the FIRST question, with the known size options as choices.
+- Do NOT assume or guess the size from the image alone — sizes can look similar in photos and the difference in value can be dramatic.
+- Example size question: { "id": "size", "question": "What is the height of this piece?", "type": "choice", "options": ["4 inches", "6 inches", "8 inches", "10 inches", "12 inches or more"] }
+
 Set confidence to "high" if you are certain of the exact item, "low" if you can only make a general guess, or "unknown" if you cannot identify at all.`
       : `${contextLine}
 You are an expert collectibles identifier. The user described: "${text_query}".
-Identify the EXACT item and its physical_format. Generate 2-3 SHORT condition questions relevant to that format. Keep each under 8 words.
+Identify the EXACT item and its physical_format. Generate 2-4 SHORT questions relevant to that format that affect resale value. Keep each under 10 words.
+
+IMPORTANT — Size questions:
+- If this item was manufactured in multiple sizes, include a size/height question as the FIRST question with known size options as choices.
+- Do NOT assume a size — ask the user.
+
 Set confidence to "high" if you are certain, "low" if making a general guess, or "unknown" if you cannot identify it.`;
 
     const schema = {
