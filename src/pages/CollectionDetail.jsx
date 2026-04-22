@@ -33,6 +33,7 @@ export default function CollectionDetail() {
       const res = await base44.entities.Collection.filter({ id });
       return res[0] || null;
     },
+    placeholderData: (prev) => prev,
     onSuccess: (d) => setCollectionData(d),
   });
 
@@ -105,7 +106,7 @@ export default function CollectionDetail() {
     );
   }
 
-  if (!activeCollection) return <div className="p-12 text-center text-muted-foreground">Collection not found</div>;
+  if (!loadingCol && !activeCollection) return <div className="p-12 text-center text-muted-foreground">Collection not found</div>;
 
   return (
     <div className="max-w-6xl mx-auto px-5 sm:px-8 py-10">
