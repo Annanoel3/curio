@@ -131,7 +131,8 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       setProgress(100);
       setPhase('questions');
     } catch (e) {
-      runAppraisal("", [], "");
+      toast.error("Identification failed — please try again");
+      setPhase(null);
     }
   };
 
