@@ -88,24 +88,13 @@ Set confidence to "high" if you are certain of the exact model, "low" if making 
     const invokePayload = {
       prompt,
       response_json_schema: schema,
-      model: 'claude_sonnet_4_6',
+      model: 'gemini_3_flash',
     };
     if (allImageUrls.length) {
       invokePayload.file_urls = allImageUrls;
     }
 
-    let result;
-    try {
-      result = await base44.integrations.Core.InvokeLLM(invokePayload);
-    } catch (llmError) {
-      // If Claude rejects due to image size, retry with Gemini
-      if (llmError.message && llmError.message.includes('image exceeds')) {
-        invokePayload.model = 'gemini_3_flash';
-        result = await base44.integrations.Core.InvokeLLM(invokePayload);
-      } else {
-        throw llmError;
-      }
-    }
+    const result = await base44.integrations.Core.InvokeLLM(invokePayload);
 
     // Filter out trading-card-specific questions for die-cast items
     const identified = result.identified_item || '';
