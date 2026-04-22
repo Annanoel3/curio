@@ -29,7 +29,16 @@ export default function ImageUpload({ value, onChange, className = "" }) {
     if (!file) return;
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      let file_url;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          ({ file_url } = await base44.integrations.Core.UploadFile({ file }));
+          break;
+        } catch (e) {
+          if (attempt === 2) throw e;
+          await new Promise(r => setTimeout(r, 1500));
+        }
+      }
       onChange(file_url);
     } finally {
       setUploading(false);
