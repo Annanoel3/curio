@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, Plus, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import ImageUpload from "@/components/ImageUpload";
 import TagInput from "@/components/TagInput";
@@ -24,6 +24,11 @@ const empty = {
   status: "owned",
 };
 
+async function uploadFile(file) {
+  const { file_url } = await base44.integrations.Core.UploadFile({ file });
+  return file_url;
+}
+
 // phase: null | 'condition' | 'identifying' | 'questions' | 'appraising'
 export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, collectionType }) {
   const [data, setData] = useState(empty);
@@ -36,6 +41,8 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
   const [saving, setSaving] = useState(false);
   const [needsManualTitle, setNeedsManualTitle] = useState(false);
   const [manualTitle, setManualTitle] = useState("");
+  const [extraIdentifyImages, setExtraIdentifyImages] = useState([]);
+  const [uploadingExtra, setUploadingExtra] = useState(false);
 
   const appraising = phase === 'appraising';
 
@@ -63,19 +70,21 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       setAnswers({});
       setNeedsManualTitle(false);
       setManualTitle("");
+      setExtraIdentifyImages([]);
     }
   }, [open, initial]);
 
   const handleAppraisalClick = async () => {
-    if (!data.image_url && !data.title.trim()) {
+    const allImages = [data.image_url, ...extraIdentifyImages].filter(Boolean);
+    if (!allImages.length && !data.title.trim()) {
       toast.error("Add a photo or title first");
       return;
     }
     setPhase('identifying');
     try {
       const res = await base44.functions.invoke("identifyItem", {
-        image_url: data.image_url || undefined,
-        text_query: data.image_url ? (data.title.trim() || undefined) : data.title,
+        image_urls: allImages.length ? allImages : undefined,
+        text_query: !allImages.length ? data.title : (data.title.trim() || undefined),
         collection_type: collectionType,
       });
       const result = res.data;
@@ -121,10 +130,11 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
 
   const runAppraisal = async (selectedCondition, conditionAnswers = [], identified = "") => {
     setPhase('appraising');
+    const allImages = [data.image_url, ...extraIdentifyImages].filter(Boolean);
     try {
       const res = await base44.functions.invoke("appraiseItem", {
-        image_url: data.image_url || undefined,
-        text_query: data.image_url ? undefined : data.title,
+        image_urls: allImages.length ? allImages : undefined,
+        text_query: !allImages.length ? data.title : undefined,
         collection_type: collectionType,
         condition: selectedCondition,
         condition_answers: conditionAnswers,

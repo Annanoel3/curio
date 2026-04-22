@@ -9,10 +9,12 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { image_url, text_query, collection_type, condition, condition_answers, identified_item } = body;
+    const { image_url, image_urls, text_query, collection_type, condition, condition_answers, identified_item } = body;
 
-    if (!image_url && !text_query) {
-      return Response.json({ error: 'Provide image_url or text_query' }, { status: 400 });
+    const allImageUrls = image_urls?.length ? image_urls : (image_url ? [image_url] : []);
+
+    if (!allImageUrls.length && !text_query) {
+      return Response.json({ error: 'Provide image_url(s) or text_query' }, { status: 400 });
     }
 
     const contextLine = collection_type ? `The user collects: ${collection_type}.` : '';
@@ -24,8 +26,12 @@ Deno.serve(async (req) => {
       ? `Additional condition details provided by the user: ${condition_answers.map(a => `${a.question}: ${a.answer}`).join('; ')}.`
       : '';
 
-    const prompt = image_url
-      ? `${contextLine} ${identifiedLine} ${conditionLine} ${answersLine}
+    const multiImageNote = allImageUrls.length > 1
+      ? `The user has provided ${allImageUrls.length} photos of the same item. Use all images together for a thorough appraisal.`
+      : '';
+
+    const prompt = allImageUrls.length
+      ? `${contextLine} ${identifiedLine} ${conditionLine} ${answersLine} ${multiImageNote}
 You are a precise, data-driven collectibles appraiser. Your job is to find what this item ACTUALLY sells for — not high, not low, but accurate.
 
 Examine the image. Follow these steps exactly:
@@ -73,8 +79,8 @@ Item: "${text_query}".
       model: 'gemini_3_flash',
       add_context_from_internet: true
     };
-    if (image_url) {
-      invokePayload.file_urls = [image_url];
+    if (allImageUrls.length) {
+      invokePayload.file_urls = allImageUrls;
     }
 
     const result = await base44.integrations.Core.InvokeLLM(invokePayload);

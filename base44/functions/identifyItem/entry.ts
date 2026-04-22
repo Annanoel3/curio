@@ -9,18 +9,24 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { image_url, text_query, collection_type } = body;
+    const { image_url, image_urls, text_query, collection_type } = body;
 
-    if (!image_url && !text_query) {
-      return Response.json({ error: 'Provide image_url or text_query' }, { status: 400 });
+    // Support single or multiple images
+    const allImageUrls = image_urls?.length ? image_urls : (image_url ? [image_url] : []);
+
+    if (!allImageUrls.length && !text_query) {
+      return Response.json({ error: 'Provide image_url(s) or text_query' }, { status: 400 });
     }
 
     const contextLine = collection_type ? `The user collects: ${collection_type}.` : '';
+    const multiImageNote = allImageUrls.length > 1
+      ? `The user has provided ${allImageUrls.length} photos of the same item (e.g. front and back). Use all images together to identify it.`
+      : '';
 
-    const prompt = image_url
-      ? `${contextLine}
-You are an expert collectibles identifier. Look at the image and identify the EXACT item — include brand, model name, year/series, variant, and packaging type.
-Also output the item's physical_format as one of: "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "comic book", "other".
+    const prompt = allImageUrls.length
+      ? `${contextLine} ${multiImageNote}
+You are an expert collectibles identifier. Look at the image(s) and identify the EXACT item — include brand, model name, year/series, variant, and packaging type.
+Also output the item's physical_format as one of: "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "comic book", "pottery/ceramics", "other".
 Then generate 2-3 SHORT condition questions relevant to that physical format that affect resale value. Keep each question under 8 words.
 Set confidence to "high" if you are certain of the exact item, "low" if you can only make a general guess, or "unknown" if you cannot identify at all.`
       : `${contextLine}
@@ -57,8 +63,8 @@ Set confidence to "high" if you are certain, "low" if making a general guess, or
       model: 'gemini_3_flash',
       add_context_from_internet: true,
     };
-    if (image_url) {
-      invokePayload.file_urls = [image_url];
+    if (allImageUrls.length) {
+      invokePayload.file_urls = allImageUrls;
     }
 
     const result = await base44.integrations.Core.InvokeLLM(invokePayload);
