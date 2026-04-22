@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { image_url, image_urls, text_query, collection_type } = body;
+    const { image_url, image_urls, text_query, collection_type, known_size } = body;
 
     // Support single or multiple images
     const allImageUrls = image_urls?.length ? image_urls : (image_url ? [image_url] : []);
@@ -25,26 +25,33 @@ Deno.serve(async (req) => {
 
     const prompt = allImageUrls.length
       ? `${contextLine} ${multiImageNote}
-You are an expert collectibles identifier. Look at the image(s) and identify the EXACT item — include brand, model name, year/series, variant, and packaging type.
-Also output the item's physical_format as one of: "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "comic book", "pottery/ceramics", "other".
+You are an expert collectibles identifier and appraiser with deep knowledge of art glass, ceramics, figurines, and collectibles.
 
-Then generate 2-4 SHORT questions relevant to that physical format that affect resale value. Keep each question under 10 words.
+Step 1 — VISUAL ANALYSIS: Carefully examine every visual detail in the image(s):
+- Overall silhouette and shape (e.g. tapered, cylindrical, footed, goblet-shaped, handled)
+- Surface decoration: motifs, patterns, textures, frosted vs. clear areas
+- Base/foot style: flat, footed, sculptural elements (animals, flowers, etc.)
+- Any visible marks, signatures, or etching
+- Color and finish
 
-IMPORTANT — Size questions:
-- If this item was manufactured in multiple sizes (e.g. a vase, figurine, or sculpture that came in 4", 6", 8", 10" versions), you MUST include a size/height question as the FIRST question, with the known size options as choices.
-- Do NOT assume or guess the size from the image alone — sizes can look similar in photos and the difference in value can be dramatic.
-- Example size question: { "id": "size", "question": "What is the height of this piece?", "type": "choice", "options": ["4 inches", "6 inches", "8 inches", "10 inches", "12 inches or more"] }
+Step 2 — IDENTIFY the EXACT model: Use your visual analysis to match the item to a specific named model/pattern. Do not default to a generic or most-common version — the shape and decoration uniquely identify the piece. Include brand, exact model name, model number if known, and year/series.
 
-Set confidence to "high" if you are certain of the exact item, "low" if you can only make a general guess, or "unknown" if you cannot identify at all.`
+Step 3 — OUTPUT physical_format as one of: "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "comic book", "pottery/ceramics", "other".
+
+Step 4 — QUESTIONS: Generate 2-4 questions that affect resale value, in this order:
+a) SIZE FIRST (if this item was made in multiple sizes): Ask "What is the height of this piece?" with the known size options for that specific model as choices. ALWAYS include "Other / I'll measure" as the last option. Do NOT assume the size from the photo.
+b) Then condition questions relevant to the format.
+
+Set confidence to "high" if you are certain of the exact model, "low" if only the brand/category is clear, or "unknown" if unidentifiable.`
       : `${contextLine}
 You are an expert collectibles identifier. The user described: "${text_query}".
-Identify the EXACT item and its physical_format. Generate 2-4 SHORT questions relevant to that format that affect resale value. Keep each under 10 words.
+Identify the EXACT item (brand, model name, model number, year/series) and its physical_format.
 
-IMPORTANT — Size questions:
-- If this item was manufactured in multiple sizes, include a size/height question as the FIRST question with known size options as choices.
-- Do NOT assume a size — ask the user.
+Generate 2-4 questions that affect resale value:
+- If this item was made in multiple sizes, ask about height FIRST with known size options as choices. Always include "Other / I'll measure" as the last option.
+- Then ask condition questions relevant to the format.
 
-Set confidence to "high" if you are certain, "low" if making a general guess, or "unknown" if you cannot identify it.`;
+Set confidence to "high" if you are certain of the exact model, "low" if making a general guess, or "unknown" if you cannot identify it.`;
 
     const schema = {
       type: 'object',

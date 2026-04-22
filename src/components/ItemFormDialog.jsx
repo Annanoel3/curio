@@ -43,6 +43,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
   const [manualTitle, setManualTitle] = useState("");
   const [extraIdentifyImages, setExtraIdentifyImages] = useState([]);
   const [uploadingExtra, setUploadingExtra] = useState(false);
+  const [otherSizeInput, setOtherSizeInput] = useState("");
 
   const appraising = phase === 'appraising';
 
@@ -71,6 +72,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       setNeedsManualTitle(false);
       setManualTitle("");
       setExtraIdentifyImages([]);
+      setOtherSizeInput("");
     }
   }, [open, initial]);
 
@@ -120,12 +122,34 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
     runAppraisal("", questions.length ? [] : [], manualTitle.trim());
   };
 
+  // Check if the size question got "Other" — if so, we need a text input before proceeding
+  const sizeQuestion = questions.find(q => q.id === 'size');
+  const sizeAnswerIsOther = sizeQuestion && (answers['size'] === 'Other / I\'ll measure' || answers['size'] === 'Other');
+
   const handleAnswersSubmit = () => {
+    // If user picked "Other" for size, require them to type it first
+    if (sizeAnswerIsOther && !otherSizeInput.trim()) return;
+
+    const resolvedAnswers = { ...answers };
+    if (sizeAnswerIsOther && otherSizeInput.trim()) {
+      resolvedAnswers['size'] = otherSizeInput.trim();
+    }
+
     const conditionAnswers = questions.map(q => ({
       question: q.question,
-      answer: answers[q.id] ?? "Not answered",
+      answer: resolvedAnswers[q.id] ?? "Not answered",
     }));
-    runAppraisal("", conditionAnswers, identifiedItem);
+
+    // Re-identify with the confirmed size so the model name gets updated
+    reIdentifyWithAnswers(conditionAnswers);
+  };
+
+  const reIdentifyWithAnswers = async (conditionAnswers) => {
+    // Build a text hint with all the confirmed answers so the appraiser has full context
+    const sizeAnswer = conditionAnswers.find(a => a.question?.toLowerCase().includes('height') || a.question?.toLowerCase().includes('size'));
+    const sizeHint = sizeAnswer ? ` The user confirmed the size/height is: ${sizeAnswer.answer}.` : '';
+    const updatedIdentified = identifiedItem + sizeHint;
+    runAppraisal("", conditionAnswers, updatedIdentified);
   };
 
   const runAppraisal = async (selectedCondition, conditionAnswers = [], identified = "") => {
@@ -321,7 +345,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
                         <button
                           key={opt}
                           type="button"
-                          onClick={() => setAnswers(prev => ({ ...prev, [q.id]: opt }))}
+                          onClick={() => { setAnswers(prev => ({ ...prev, [q.id]: opt })); setOtherSizeInput(""); }}
                           className={`text-xs px-3 py-1 rounded-full border transition ${
                             answers[q.id] === opt
                               ? 'bg-foreground text-background border-foreground'
@@ -332,12 +356,23 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
                         </button>
                       ))}
                     </div>
+                    {/* Show text input when "Other" is selected for size question */}
+                    {q.id === 'size' && sizeAnswerIsOther && (
+                      <Input
+                        value={otherSizeInput}
+                        onChange={(e) => setOtherSizeInput(e.target.value)}
+                        placeholder='e.g. "10 inches"'
+                        className="text-xs h-7 mt-2"
+                        autoFocus
+                      />
+                    )}
                   </div>
                 ))}
                 <Button
                   type="button"
                   size="sm"
                   onClick={handleAnswersSubmit}
+                  disabled={sizeAnswerIsOther && !otherSizeInput.trim()}
                   className="w-full mt-1 gap-1.5"
                 >
                   <Sparkles className="w-3.5 h-3.5" /> Get Appraisal
