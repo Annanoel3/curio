@@ -32,28 +32,16 @@ Deno.serve(async (req) => {
 
     const prompt = allImageUrls.length
       ? `${contextLine} ${identifiedLine} ${conditionLine} ${answersLine} ${multiImageNote}
-You are a precise, data-driven collectibles appraiser. Your job is to find what this item ACTUALLY sells for — not high, not low, but accurate.
-
-Examine the image. Follow these steps exactly:
-1. IDENTIFY the exact item, variant, year, and packaging.
-2. SEARCH for recently SOLD/COMPLETED listings on eBay (sold filter), Mercari sold, and check Walmart/Target for retail shelf price if still in production.
-3. PRICE DISCIPLINE — critical: List out the individual sold prices you find. Remove the single highest and single lowest as outliers. Take the MEDIAN of the remaining prices. That median is your estimated_value. Do not round up. Do not inflate.
-   - Example: sold prices $5.99, $7.50, $8.99, $9.99, $14.00 → remove $5.99 and $14.00 → median of $7.50, $8.99, $9.99 = $8.99 estimated_value
-   - value_low = the lowest non-outlier sold price, value_high = the highest non-outlier sold price
-4. Condition context: ${condition || 'assess from image'}. Adjust median accordingly if condition is notably above or below average.
-5. In appraisal_reasoning: list the actual sold prices you found, show which you removed as outliers, and state the resulting median. Be specific.
-6. Extract a precise title, 3-6 lowercase tags, and concise notes (under 100 words).`
+You are a collectibles appraiser. Based on your training knowledge of collector markets:
+1. Identify the exact item, variant, year, and packaging from the image.
+2. Estimate what this item sells for based on your knowledge of typical sold prices on eBay and Mercari for similar items in similar condition.
+3. Provide: estimated_value (typical sold price), value_low (low end), value_high (high end), title, 3-6 lowercase tags, brief notes under 80 words, and a short appraisal_reasoning explaining your estimate.
+4. Condition: ${condition || 'assess from image'}.`
       : `${contextLine} ${identifiedLine} ${conditionLine} ${answersLine}
-You are a precise, data-driven collectibles appraiser. Your job is to find what this item ACTUALLY sells for — not high, not low, but accurate.
-
-Item: "${text_query}".
-1. Identify the exact variant, year, and packaging.
-2. SEARCH for recently SOLD/COMPLETED listings on eBay (sold filter), Mercari sold, and retail shelf price if still in production.
-3. PRICE DISCIPLINE — critical: List the individual sold prices you find. Remove the single highest and single lowest as outliers. Take the MEDIAN of the remaining prices. That is your estimated_value. Do not round up or inflate.
-   - value_low = lowest non-outlier sold price, value_high = highest non-outlier sold price
-4. Condition: ${condition || 'not specified'}. Adjust if condition is notably above or below average.
-5. In appraisal_reasoning: list the actual sold prices, show which you removed, and state the resulting median.
-6. Include a precise title, 3-6 lowercase tags, and brief notes (under 100 words).`;
+You are a collectibles appraiser. For the item: "${text_query || identified_item}":
+1. Estimate what this item sells for based on your knowledge of typical sold prices on eBay and Mercari.
+2. Provide: estimated_value (typical sold price), value_low (low end), value_high (high end), title, 3-6 lowercase tags, brief notes under 80 words, and a short appraisal_reasoning.
+3. Condition: ${condition || 'not specified'}.`;
 
     const schema = {
       type: 'object',
@@ -77,7 +65,6 @@ Item: "${text_query}".
       prompt,
       response_json_schema: schema,
       model: 'gemini_3_flash',
-      add_context_from_internet: true
     };
     if (allImageUrls.length) {
       invokePayload.file_urls = allImageUrls;

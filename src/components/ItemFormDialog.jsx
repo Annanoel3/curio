@@ -104,11 +104,9 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       toast.error("Add a photo or title first");
       return;
     }
-    // Check image sizes — Claude has a 5MB limit. Warn if any stored image might be too large.
-    // (Newly uploaded images are compressed, but existing items may have old large images.)
     setPhase('identifying');
     try {
-      const res = await base44.functions.invoke("identifyItem", {
+      const res = await base44.functions.invoke("identifyAndAppraise", {
         image_urls: allImages.length ? allImages : undefined,
         text_query: !allImages.length ? data.title : (data.title.trim() || undefined),
         collection_type: collectionType,
@@ -116,7 +114,6 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       const result = res.data;
       const confidence = result?.confidence || 'high';
 
-      // If AI couldn't confidently identify and user hasn't typed a title, ask them
       if ((confidence === 'low' || confidence === 'unknown') && !data.title.trim()) {
         setIdentifiedItem(result?.identified_item || "");
         setQuestions(result?.questions || []);
@@ -130,7 +127,6 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       setIdentifiedItem(result?.identified_item || "");
       setQuestions(result?.questions || []);
       setAnswers({});
-      setProgress(100);
       setPhase('questions');
     } catch (e) {
       toast.error("Identification failed — please try again");
@@ -138,70 +134,19 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
     }
   };
 
-  const handleManualTitleSubmit = () => {
+  const handleManualTitleSubmit = async () => {
     if (!manualTitle.trim()) return;
-    // Use the manual title as the item title and re-run identification with it
     setData(prev => ({ ...prev, title: manualTitle.trim() }));
     setNeedsManualTitle(false);
-    // Re-run appraisal with the user-provided title as context
-    runAppraisal("", questions.length ? [] : [], manualTitle.trim());
-  };
-
-  const handleAnswersSubmit = async () => {
-    // Build final answers — substitute "Other" size answers with the typed custom value
-    const finalAnswers = {};
-    for (const q of questions) {
-      const ans = answers[q.id];
-      if (ans === 'Other / I\'ll measure') {
-        const typed = customSizeInput[q.id]?.trim();
-        finalAnswers[q.id] = typed ? typed : "Not answered";
-      } else {
-        finalAnswers[q.id] = ans ?? "Not answered";
-      }
-    }
-
-    // Check if user provided a custom size — if so, re-identify with that size for accuracy
-    const sizeQ = questions.find(q => q.id === 'size' || q.question.toLowerCase().includes('height') || q.question.toLowerCase().includes('size'));
-    const sizeAnswer = sizeQ ? finalAnswers[sizeQ.id] : null;
-    const hadOtherSize = sizeQ && answers[sizeQ.id] === 'Other / I\'ll measure' && customSizeInput[sizeQ.id]?.trim();
-
-    let resolvedItem = identifiedItem;
-
-    if (hadOtherSize) {
-      // Re-run identification with the actual size as context so we get the right model
-      setPhase('identifying');
-      try {
-        const allImages = [data.image_url, ...extraIdentifyImages].filter(Boolean);
-        const res = await base44.functions.invoke("identifyItem", {
-          image_urls: allImages.length ? allImages : undefined,
-          text_query: !allImages.length ? data.title : undefined,
-          collection_type: collectionType,
-          known_size: customSizeInput[sizeQ.id].trim(),
-        });
-        resolvedItem = res.data?.identified_item || identifiedItem;
-      } catch (e) {
-        // fall through with original identified item
-      }
-    }
-
-    const conditionAnswers = questions.map(q => ({
-      question: q.question,
-      answer: finalAnswers[q.id],
-    }));
-    runAppraisal("", conditionAnswers, resolvedItem);
-  };
-
-  const runAppraisal = async (selectedCondition, conditionAnswers = [], identified = "") => {
     setPhase('appraising');
     const allImages = [data.image_url, ...extraIdentifyImages].filter(Boolean);
     try {
       const res = await base44.functions.invoke("appraiseItem", {
         image_urls: allImages.length ? allImages : undefined,
-        text_query: !allImages.length ? data.title : undefined,
+        text_query: manualTitle.trim(),
         collection_type: collectionType,
-        condition: selectedCondition,
-        condition_answers: conditionAnswers,
-        identified_item: identified,
+        condition_answers: [],
+        identified_item: manualTitle.trim(),
       });
       const a = res.data?.appraisal;
       if (!a) throw new Error("No appraisal returned");
@@ -215,7 +160,57 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
         value_high: a.value_high ?? null,
         ai_appraisal_notes: a.appraisal_reasoning || "",
       }));
-      setProgress(100);
+      toast.success("AI appraisal complete");
+    } catch (e) {
+      toast.error("Appraisal failed");
+    } finally {
+      setPhase(null);
+    }
+  };
+
+  const handleAnswersSubmit = async () => {
+    const finalAnswers = {};
+    for (const q of questions) {
+      const ans = answers[q.id];
+      if (ans === "Other / I'll measure") {
+        const typed = customSizeInput[q.id]?.trim();
+        finalAnswers[q.id] = typed || "Not answered";
+      } else {
+        finalAnswers[q.id] = ans ?? "Not answered";
+      }
+    }
+
+    const sizeQ = questions.find(q => q.id === 'size' || q.question.toLowerCase().includes('height') || q.question.toLowerCase().includes('size'));
+    const hadOtherSize = sizeQ && answers[sizeQ.id] === "Other / I'll measure" && customSizeInput[sizeQ.id]?.trim();
+
+    const conditionAnswers = questions.map(q => ({
+      question: q.question,
+      answer: finalAnswers[q.id],
+    }));
+
+    setPhase('appraising');
+    const allImages = [data.image_url, ...extraIdentifyImages].filter(Boolean);
+    try {
+      const res = await base44.functions.invoke("appraiseItem", {
+        image_urls: allImages.length ? allImages : undefined,
+        text_query: !allImages.length ? data.title : undefined,
+        collection_type: collectionType,
+        condition_answers: conditionAnswers,
+        identified_item: identifiedItem,
+        known_size: hadOtherSize ? customSizeInput[sizeQ.id].trim() : undefined,
+      });
+      const a = res.data?.appraisal;
+      if (!a) throw new Error("No appraisal returned");
+      setData((prev) => ({
+        ...prev,
+        title: prev.title || a.title || "",
+        notes: prev.notes || a.notes || "",
+        tags: prev.tags?.length ? prev.tags : (a.tags || []),
+        estimated_value: a.estimated_value ?? prev.estimated_value,
+        value_low: a.value_low ?? null,
+        value_high: a.value_high ?? null,
+        ai_appraisal_notes: a.appraisal_reasoning || "",
+      }));
       toast.success("AI appraisal complete");
     } catch (e) {
       toast.error("Appraisal failed");
