@@ -106,7 +106,8 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
     }
     setPhase('identifying');
     try {
-      const res = await base44.functions.invoke("identifyAndAppraise", {
+      const res = await base44.functions.invoke("identifyAndAppraiseComplete", {
+        phase: 'identify',
         image_urls: allImages.length ? allImages : undefined,
         text_query: !allImages.length ? data.title : (data.title.trim() || undefined),
         collection_type: collectionType,
@@ -139,10 +140,9 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
     setData(prev => ({ ...prev, title: manualTitle.trim() }));
     setNeedsManualTitle(false);
     setPhase('appraising');
-    const allImages = [data.image_url, ...extraIdentifyImages].filter(Boolean);
     try {
-      const res = await base44.functions.invoke("appraiseItem", {
-        image_urls: allImages.length ? allImages : undefined,
+      const res = await base44.functions.invoke("identifyAndAppraiseComplete", {
+        phase: 'appraise',
         text_query: manualTitle.trim(),
         collection_type: collectionType,
         condition_answers: [],
@@ -189,11 +189,10 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
     }));
 
     setPhase('appraising');
-    const allImages = [data.image_url, ...extraIdentifyImages].filter(Boolean);
     try {
-      const res = await base44.functions.invoke("appraiseItem", {
-        image_urls: allImages.length ? allImages : undefined,
-        text_query: !allImages.length ? data.title : undefined,
+      const res = await base44.functions.invoke("identifyAndAppraiseComplete", {
+        phase: 'appraise',
+        text_query: !identifiedItem ? data.title : undefined,
         collection_type: collectionType,
         condition_answers: conditionAnswers,
         identified_item: identifiedItem,
