@@ -85,34 +85,27 @@ Set confidence to "high" if you are certain of the exact model, "low" if making 
       required: ['identified_item', 'questions']
     };
 
-    // Check image sizes — Claude has a 5MB limit per image
-    // If any image exceeds 4MB, fall back to gemini which has no such limit
-    let modelToUse = 'claude_sonnet_4_6';
-    for (const url of allImageUrls) {
-      try {
-        const headRes = await fetch(url, { method: 'HEAD' });
-        const contentLength = parseInt(headRes.headers.get('content-length') || '0');
-        if (contentLength > 4 * 1024 * 1024) {
-          modelToUse = 'gemini_3_flash';
-          break;
-        }
-      } catch {
-        // If we can't check, fall back to gemini to be safe
-        modelToUse = 'gemini_3_flash';
-        break;
-      }
-    }
-
     const invokePayload = {
       prompt,
       response_json_schema: schema,
-      model: modelToUse,
+      model: 'claude_sonnet_4_6',
     };
     if (allImageUrls.length) {
       invokePayload.file_urls = allImageUrls;
     }
 
-    const result = await base44.integrations.Core.InvokeLLM(invokePayload);
+    let result;
+    try {
+      result = await base44.integrations.Core.InvokeLLM(invokePayload);
+    } catch (llmError) {
+      // If Claude rejects due to image size, retry with Gemini
+      if (llmError.message && llmError.message.includes('image exceeds')) {
+        invokePayload.model = 'gemini_3_flash';
+        result = await base44.integrations.Core.InvokeLLM(invokePayload);
+      } else {
+        throw llmError;
+      }
+    }
 
     // Filter out trading-card-specific questions for die-cast items
     const identified = result.identified_item || '';

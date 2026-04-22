@@ -104,6 +104,8 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       toast.error("Add a photo or title first");
       return;
     }
+    // Check image sizes — Claude has a 5MB limit. Warn if any stored image might be too large.
+    // (Newly uploaded images are compressed, but existing items may have old large images.)
     setPhase('identifying');
     try {
       const res = await base44.functions.invoke("identifyItem", {
