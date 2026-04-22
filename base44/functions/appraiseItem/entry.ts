@@ -61,12 +61,14 @@ You are a collectibles appraiser. For the item: "${text_query || identified_item
       required: ['title', 'tags', 'notes', 'value_low', 'value_high', 'estimated_value']
     };
 
+    // For appraisal, skip re-sending images if we already have an identified_item
+    // (images slow down the request significantly and we already know what it is)
     const invokePayload = {
       prompt,
       response_json_schema: schema,
       model: 'gemini_3_flash',
     };
-    if (allImageUrls.length) {
+    if (allImageUrls.length && !identified_item) {
       invokePayload.file_urls = allImageUrls;
     }
 
