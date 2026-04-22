@@ -88,8 +88,7 @@ Set confidence to "high" if you are certain of the exact model, "low" if making 
     const invokePayload = {
       prompt,
       response_json_schema: schema,
-      model: 'gemini_3_flash',
-      add_context_from_internet: true,
+      model: 'claude_sonnet_4_6',
     };
     if (allImageUrls.length) {
       invokePayload.file_urls = allImageUrls;
