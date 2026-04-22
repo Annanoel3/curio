@@ -191,6 +191,50 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               value={data.image_url}
               onChange={(url) => setData({ ...data, image_url: url })}
             />
+            {/* Extra images for identification */}
+            <div className="mt-2">
+              <p className="text-[10px] text-muted-foreground mb-1.5">Add more photos (front/back etc.)</p>
+              <div className="flex flex-wrap gap-1.5">
+                {extraIdentifyImages.map((url, i) => (
+                  <div key={url} className="relative w-12 h-12 rounded-lg overflow-hidden border border-border flex-shrink-0">
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setExtraIdentifyImages(prev => prev.filter((_, idx) => idx !== i))}
+                      className="absolute top-0 right-0 w-4 h-4 bg-background/90 flex items-center justify-center"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                ))}
+                <label className="w-12 h-12 rounded-lg border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-foreground/40 hover:bg-secondary transition flex-shrink-0">
+                  {uploadingExtra ? (
+                    <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                  ) : (
+                    <Plus className="w-3.5 h-3.5 text-muted-foreground" />
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploadingExtra}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploadingExtra(true);
+                      try {
+                        const url = await uploadFile(file);
+                        setExtraIdentifyImages(prev => [...prev, url]);
+                      } finally {
+                        setUploadingExtra(false);
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+
             <Button
               type="button"
               variant="outline"
