@@ -28,26 +28,32 @@ Deno.serve(async (req) => {
       ? `${contextLine} ${knownSizeLine} ${multiImageNote}
 You are an expert collectibles identifier and appraiser with deep knowledge of art glass, ceramics, figurines, and collectibles.
 
-Step 1 — VISUAL ANALYSIS: Carefully examine every visual detail in the image(s):
+Step 1 — MANDATORY PHYSICAL COUNT (do this before anything else):
+- If the item is a FORK: count every individual tine/prong one by one. State the count explicitly (e.g. "I count 5 tines"). A standard dinner fork has 4 tines. A 5-tine fork is a rare, distinct, collectible variant with significantly different value — DO NOT assume 4 tines without counting. If the text_query mentions "5 prong", "5 tine", or similar, treat this as confirmed ground truth.
+- If the item has other countable structural features (petals, legs, panels), count and note them.
+
+Step 2 — VISUAL ANALYSIS: Examine every visual detail:
 - Overall silhouette and shape (e.g. tapered, cylindrical, footed, goblet-shaped, handled)
-- For cutlery/flatware: COUNT the exact number of tines/prongs on forks. A 5-tine fork is rare and distinct from a standard 4-tine fork — this dramatically affects identification and value.
 - Surface decoration: motifs, patterns, textures, frosted vs. clear areas
-- Base/foot style: flat, footed, sculptural elements (animals, flowers, etc.)
+- Base/foot style: flat, footed, sculptural elements
 - Any visible marks, signatures, or etching (read ALL text exactly as written)
 - Color and finish
-- Any physically unusual or non-standard features (extra tines, unusual shape, rare variant)
+- Any physically unusual or non-standard features — flag these prominently
 
-Step 2 — IDENTIFY the EXACT model: Use your visual analysis to match the item to a specific named model/pattern. Do not default to a generic or most-common version — the shape and decoration uniquely identify the piece. Include brand, exact model name, model number if known, and year/series.
+Step 3 — IDENTIFY the EXACT model: Use your physical count and visual analysis to match the item. Do not default to the most-common version. If the tine count or shape is non-standard, that IS the identification — call it out. Include brand, exact model name, model number if known, and year/series.
 
-Step 3 — OUTPUT physical_format as one of: "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "comic book", "pottery/ceramics", "other".
+Step 4 — OUTPUT physical_format as one of: "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "comic book", "pottery/ceramics", "flatware/cutlery", "other".
 
-Step 4 — QUESTIONS: Generate 2-4 questions that affect resale value, in this order:
+Step 5 — QUESTIONS: Generate 2-4 questions that affect resale value, in this order:
 a) SIZE FIRST (if this item was made in multiple sizes): Ask "What is the height of this piece?" with the known size options for that specific model as choices. ALWAYS include "Other / I'll measure" as the last option. Do NOT assume the size from the photo.
 b) Then condition questions relevant to the format.
 
 Set confidence to "high" if you are certain of the exact model, "low" if only the brand/category is clear, or "unknown" if unidentifiable.`
       : `${contextLine} ${knownSizeLine}
 You are an expert collectibles identifier. The user described: "${text_query}".
+
+CRITICAL: If the description mentions "5 prong", "5 tine", "five prong", "five tine", or any non-standard physical count — treat this as confirmed ground truth. Identify the item AS that specific variant, not the standard version.
+
 Identify the EXACT item (brand, model name, model number, year/series) and its physical_format.
 
 Generate 2-4 questions that affect resale value:
