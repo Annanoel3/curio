@@ -69,7 +69,6 @@ Set confidence to "high" if certain, "low" if making a general guess.`;
       const identifyPayload = {
         prompt: identifyPrompt,
         response_json_schema: identifySchema,
-        model: 'gemini_3_flash',
       };
       if (allImageUrls.length) identifyPayload.file_urls = allImageUrls;
 

@@ -135,21 +135,33 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
     }
   };
 
+  const runAppraise = async (payload) => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await base44.functions.invoke("identifyAndAppraiseComplete", payload);
+        const a = res.data?.appraisal;
+        if (!a) throw new Error("No appraisal returned");
+        return a;
+      } catch (e) {
+        if (attempt === 2) throw e;
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+  };
+
   const handleManualTitleSubmit = async () => {
     if (!manualTitle.trim()) return;
     setData(prev => ({ ...prev, title: manualTitle.trim() }));
     setNeedsManualTitle(false);
     setPhase('appraising');
     try {
-      const res = await base44.functions.invoke("identifyAndAppraiseComplete", {
+      const a = await runAppraise({
         phase: 'appraise',
         text_query: manualTitle.trim(),
         collection_type: collectionType,
         condition_answers: [],
         identified_item: manualTitle.trim(),
       });
-      const a = res.data?.appraisal;
-      if (!a) throw new Error("No appraisal returned");
       setData((prev) => ({
         ...prev,
         title: prev.title || a.title || "",
@@ -190,7 +202,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
 
     setPhase('appraising');
     try {
-      const res = await base44.functions.invoke("identifyAndAppraiseComplete", {
+      const a = await runAppraise({
         phase: 'appraise',
         text_query: !identifiedItem ? data.title : undefined,
         collection_type: collectionType,
@@ -198,8 +210,6 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
         identified_item: identifiedItem,
         known_size: hadOtherSize ? customSizeInput[sizeQ.id].trim() : undefined,
       });
-      const a = res.data?.appraisal;
-      if (!a) throw new Error("No appraisal returned");
       setData((prev) => ({
         ...prev,
         title: prev.title || a.title || "",
@@ -212,7 +222,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       }));
       toast.success("AI appraisal complete");
     } catch (e) {
-      toast.error("Appraisal failed");
+      toast.error("Appraisal failed — please try again");
     } finally {
       setPhase(null);
     }
