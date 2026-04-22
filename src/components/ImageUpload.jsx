@@ -21,6 +21,27 @@ async function rotateImageUrl(url, degrees) {
   });
 }
 
+async function compressImage(file, maxDim = 1600, quality = 0.82) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+        else { width = Math.round(width * maxDim / height); height = maxDim; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: "image/jpeg" })), "image/jpeg", quality);
+    };
+    img.src = url;
+  });
+}
+
 export default function ImageUpload({ value, onChange, className = "" }) {
   const [uploading, setUploading] = useState(false);
   const [rotating, setRotating] = useState(false);
@@ -29,10 +50,11 @@ export default function ImageUpload({ value, onChange, className = "" }) {
     if (!file) return;
     setUploading(true);
     try {
+      const compressed = await compressImage(file);
       let file_url;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          ({ file_url } = await base44.integrations.Core.UploadFile({ file }));
+          ({ file_url } = await base44.integrations.Core.UploadFile({ file: compressed }));
           break;
         } catch (e) {
           if (attempt === 2) throw e;
