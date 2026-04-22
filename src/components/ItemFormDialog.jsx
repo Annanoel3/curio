@@ -43,7 +43,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
   const [manualTitle, setManualTitle] = useState("");
   const [extraIdentifyImages, setExtraIdentifyImages] = useState([]);
   const [uploadingExtra, setUploadingExtra] = useState(false);
-  const [otherSizeInput, setOtherSizeInput] = useState("");
+  const [customSizeInput, setCustomSizeInput] = useState({});  // { [questionId]: string }
 
   const appraising = phase === 'appraising';
 
@@ -72,7 +72,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       setNeedsManualTitle(false);
       setManualTitle("");
       setExtraIdentifyImages([]);
-      setOtherSizeInput("");
+      setCustomSizeInput({});
     }
   }, [open, initial]);
 
@@ -122,34 +122,48 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
     runAppraisal("", questions.length ? [] : [], manualTitle.trim());
   };
 
-  // Check if the size question got "Other" — if so, we need a text input before proceeding
-  const sizeQuestion = questions.find(q => q.id === 'size');
-  const sizeAnswerIsOther = sizeQuestion && (answers['size'] === 'Other / I\'ll measure' || answers['size'] === 'Other');
+  const handleAnswersSubmit = async () => {
+    // Build final answers — substitute "Other" size answers with the typed custom value
+    const finalAnswers = {};
+    for (const q of questions) {
+      const ans = answers[q.id];
+      if (ans === 'Other / I\'ll measure') {
+        const typed = customSizeInput[q.id]?.trim();
+        finalAnswers[q.id] = typed ? typed : "Not answered";
+      } else {
+        finalAnswers[q.id] = ans ?? "Not answered";
+      }
+    }
 
-  const handleAnswersSubmit = () => {
-    // If user picked "Other" for size, require them to type it first
-    if (sizeAnswerIsOther && !otherSizeInput.trim()) return;
+    // Check if user provided a custom size — if so, re-identify with that size for accuracy
+    const sizeQ = questions.find(q => q.id === 'size' || q.question.toLowerCase().includes('height') || q.question.toLowerCase().includes('size'));
+    const sizeAnswer = sizeQ ? finalAnswers[sizeQ.id] : null;
+    const hadOtherSize = sizeQ && answers[sizeQ.id] === 'Other / I\'ll measure' && customSizeInput[sizeQ.id]?.trim();
 
-    const resolvedAnswers = { ...answers };
-    if (sizeAnswerIsOther && otherSizeInput.trim()) {
-      resolvedAnswers['size'] = otherSizeInput.trim();
+    let resolvedItem = identifiedItem;
+
+    if (hadOtherSize) {
+      // Re-run identification with the actual size as context so we get the right model
+      setPhase('identifying');
+      try {
+        const allImages = [data.image_url, ...extraIdentifyImages].filter(Boolean);
+        const res = await base44.functions.invoke("identifyItem", {
+          image_urls: allImages.length ? allImages : undefined,
+          text_query: !allImages.length ? data.title : undefined,
+          collection_type: collectionType,
+          known_size: customSizeInput[sizeQ.id].trim(),
+        });
+        resolvedItem = res.data?.identified_item || identifiedItem;
+      } catch (e) {
+        // fall through with original identified item
+      }
     }
 
     const conditionAnswers = questions.map(q => ({
       question: q.question,
-      answer: resolvedAnswers[q.id] ?? "Not answered",
+      answer: finalAnswers[q.id],
     }));
-
-    // Re-identify with the confirmed size so the model name gets updated
-    reIdentifyWithAnswers(conditionAnswers);
-  };
-
-  const reIdentifyWithAnswers = async (conditionAnswers) => {
-    // Build a text hint with all the confirmed answers so the appraiser has full context
-    const sizeAnswer = conditionAnswers.find(a => a.question?.toLowerCase().includes('height') || a.question?.toLowerCase().includes('size'));
-    const sizeHint = sizeAnswer ? ` The user confirmed the size/height is: ${sizeAnswer.answer}.` : '';
-    const updatedIdentified = identifiedItem + sizeHint;
-    runAppraisal("", conditionAnswers, updatedIdentified);
+    runAppraisal("", conditionAnswers, resolvedItem);
   };
 
   const runAppraisal = async (selectedCondition, conditionAnswers = [], identified = "") => {
@@ -345,7 +359,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
                         <button
                           key={opt}
                           type="button"
-                          onClick={() => { setAnswers(prev => ({ ...prev, [q.id]: opt })); setOtherSizeInput(""); }}
+                          onClick={() => setAnswers(prev => ({ ...prev, [q.id]: opt }))}
                           className={`text-xs px-3 py-1 rounded-full border transition ${
                             answers[q.id] === opt
                               ? 'bg-foreground text-background border-foreground'
@@ -356,15 +370,18 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
                         </button>
                       ))}
                     </div>
-                    {/* Show text input when "Other" is selected for size question */}
-                    {q.id === 'size' && sizeAnswerIsOther && (
-                      <Input
-                        value={otherSizeInput}
-                        onChange={(e) => setOtherSizeInput(e.target.value)}
-                        placeholder='e.g. "10 inches"'
-                        className="text-xs h-7 mt-2"
-                        autoFocus
-                      />
+                    {/* If user picked "Other / I'll measure" for a size question, show a text input */}
+                    {answers[q.id] === "Other / I'll measure" && (
+                      <div className="mt-2">
+                        <Input
+                          value={customSizeInput[q.id] || ""}
+                          onChange={(e) => setCustomSizeInput(prev => ({ ...prev, [q.id]: e.target.value }))}
+                          placeholder='e.g. 10 inches'
+                          className="text-xs h-8"
+                          autoFocus
+                        />
+                        <p className="text-[9px] text-muted-foreground mt-1">We'll re-identify the exact model using this size.</p>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -372,7 +389,6 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
                   type="button"
                   size="sm"
                   onClick={handleAnswersSubmit}
-                  disabled={sizeAnswerIsOther && !otherSizeInput.trim()}
                   className="w-full mt-1 gap-1.5"
                 >
                   <Sparkles className="w-3.5 h-3.5" /> Get Appraisal

@@ -19,12 +19,13 @@ Deno.serve(async (req) => {
     }
 
     const contextLine = collection_type ? `The user collects: ${collection_type}.` : '';
+    const knownSizeLine = known_size ? `CONFIRMED SIZE: The user has measured this item and confirmed it is ${known_size} tall. Use this exact size to identify the correct model/variant — do not guess or assume a different size.` : '';
     const multiImageNote = allImageUrls.length > 1
       ? `The user has provided ${allImageUrls.length} photos of the same item (e.g. front and back). Use all images together to identify it.`
       : '';
 
     const prompt = allImageUrls.length
-      ? `${contextLine} ${multiImageNote}
+      ? `${contextLine} ${knownSizeLine} ${multiImageNote}
 You are an expert collectibles identifier and appraiser with deep knowledge of art glass, ceramics, figurines, and collectibles.
 
 Step 1 — VISUAL ANALYSIS: Carefully examine every visual detail in the image(s):
@@ -43,7 +44,7 @@ a) SIZE FIRST (if this item was made in multiple sizes): Ask "What is the height
 b) Then condition questions relevant to the format.
 
 Set confidence to "high" if you are certain of the exact model, "low" if only the brand/category is clear, or "unknown" if unidentifiable.`
-      : `${contextLine}
+      : `${contextLine} ${knownSizeLine}
 You are an expert collectibles identifier. The user described: "${text_query}".
 Identify the EXACT item (brand, model name, model number, year/series) and its physical_format.
 
