@@ -24,8 +24,30 @@ const empty = {
   status: "owned",
 };
 
+async function compressImage(file, maxDim = 1200, quality = 0.75) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+        else { width = Math.round(width * maxDim / height); height = maxDim; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: "image/jpeg" })), "image/jpeg", quality);
+    };
+    img.src = url;
+  });
+}
+
 async function uploadFile(file) {
-  const { file_url } = await base44.integrations.Core.UploadFile({ file });
+  const compressed = await compressImage(file);
+  const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
   return file_url;
 }
 

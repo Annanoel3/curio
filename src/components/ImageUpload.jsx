@@ -21,7 +21,7 @@ async function rotateImageUrl(url, degrees) {
   });
 }
 
-async function compressImage(file, maxDim = 1600, quality = 0.82) {
+async function compressImage(file, maxDim = 1200, quality = 0.75) {
   return new Promise((resolve) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
