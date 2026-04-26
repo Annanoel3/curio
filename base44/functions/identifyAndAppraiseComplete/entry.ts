@@ -127,8 +127,22 @@ Set confidence to "high" if certain, "low" if making a general guess.`;
         : '';
       const userNotesLine = user_notes ? `Additional user notes (treat as ground truth): "${user_notes}".` : '';
 
-      const appraisePrompt = `Collectibles appraiser. Item: "${itemName}". ${answersLine} ${userNotesLine} ${contextLine}
-Give estimated_value (median eBay/Mercari sold price), value_low, value_high, title, 3-6 lowercase tags, notes (under 60 words), appraisal_reasoning (1-2 sentences). Adjust for condition above.`;
+      const appraisePrompt = `You are a specialist collectibles appraiser writing catalog entries for a collector's database.
+
+Item: "${itemName}". ${answersLine} ${userNotesLine} ${contextLine}
+
+TITLE RULES — be SPECIFIC and collector-grade, not generic:
+- Include brand/manufacturer, exact series name, exact model name, year, color, and packaging type.
+- Example good title: "Matchbox Moving Parts 2004 Honda S2000 — White, Blister Carded"
+- Example bad title: "2004 Honda S2000 Toy Car"
+- NEVER use generic words like "Toy Car", "Collectible", "Figurine" as the only descriptor — those must accompany specific identifiers.
+
+NOTES RULES — write for a collector, not a general audience (under 80 words):
+- Mention the specific series, what makes this model notable or collectible, any special features (moving parts, livery, variant color, etc.).
+- Mention packaging state if known.
+- Do NOT write generic filler like "highly sought after" or "enhances its value".
+
+Give estimated_value (median eBay/Mercari sold price), value_low, value_high, title, 3-6 lowercase tags, notes, appraisal_reasoning (1-2 sentences). Adjust for condition above.`;
 
       const appraiseSchema = {
         type: 'object',
