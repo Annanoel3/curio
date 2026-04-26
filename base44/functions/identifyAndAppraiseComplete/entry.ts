@@ -46,7 +46,10 @@ STEP 3 — IDENTIFY the EXACT model/variant using your physical count + visual a
 
 STEP 4 — physical_format: one of "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "pottery/ceramics", "flatware/cutlery", "other".
 
-STEP 5 — Generate 2-3 condition questions that affect resale value. For items made in multiple sizes, ask height FIRST with known size options as choices, always include "Other / I'll measure" as last option.
+STEP 5 — Generate 2-3 condition questions that affect resale value.
+- IMPORTANT: Do NOT ask about size/height for standard die-cast vehicles (Hot Wheels, Matchbox, etc.) — they are all 1:64 scale and height is irrelevant.
+- Only ask height for items genuinely made in multiple sizes (e.g. pottery, figurines, statues, plush toys).
+- For die-cast: ask about blister/card condition, car body condition, wheels, any paint chips etc.
 
 Set confidence to "high" if certain of exact model/variant, "low" if only brand/category is clear.`
         : `${contextLine} ${knownSizeLine}${userNotesLine}
@@ -54,7 +57,7 @@ You are an expert collectibles identifier. The user described: "${text_query}".
 CRITICAL: If the description or user notes mention any non-standard physical feature (e.g. "5 tines", "5 prong", unusual size, rare marking) — treat this as confirmed ground truth and identify the item AS that specific variant, not the standard version.
 1. Identify the EXACT item (brand, model name, year/series, variant). Be specific.
 2. Determine the physical_format.
-3. Generate 2-3 condition questions that affect resale value.
+3. Generate 2-3 condition questions that affect resale value. Do NOT ask about size/height for standard die-cast vehicles — they are a fixed scale. Only ask height for items genuinely made in multiple sizes (pottery, figurines, statues).
 Set confidence to "high" if certain, "low" if making a general guess.`;
 
       const identifySchema = {
