@@ -18,7 +18,7 @@ const UserNotRegisteredError = () => {
             <p>If you believe this is an error, you can:</p>
             <ul className="list-disc list-inside mt-2 space-y-1">
               <li>Verify you are logged in with the correct account</li>
-              <li>Email <a href="mailto:mediocreatbestdev@gmail.com" className="underline text-slate-800">mediocreatbestdev@gmail.com</a> for access</li>
+              <li>Email <a href="mailto:mediocreatbestdev@outlook.com" className="underline text-slate-800">mediocreatbestdev@outlook.com</a> for access</li>
               <li>Try logging out and back in again</li>
             </ul>
           </div>
