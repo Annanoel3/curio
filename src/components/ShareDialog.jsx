@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Copy, Check, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
+import { appParams } from "@/lib/app-params";
 
 const randomToken = () =>
   Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
@@ -16,8 +17,9 @@ export default function ShareDialog({ open, onOpenChange, collection, onUpdated 
 
   if (!collection) return null;
 
+  const baseUrl = appParams.appBaseUrl || window.location.origin;
   const shareUrl = collection.share_token
-    ? `${window.location.origin}/share/${collection.share_token}`
+    ? `${baseUrl}/share/${collection.share_token}`
     : "";
 
   const toggle = async (next) => {
