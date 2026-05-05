@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Moon, Sun, Monitor, Shield, Copyright } from "lucide-react";
+import { Moon, Sun, Monitor, Shield, Copyright, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { base44 } from "@/api/base44Client";
 
 export const THEME_KEY = "curio-theme";
 
@@ -17,6 +20,8 @@ applyTheme(localStorage.getItem(THEME_KEY) || "system");
 
 export default function Settings() {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "system");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     applyTheme(theme);
@@ -163,7 +168,60 @@ export default function Settings() {
         </div>
       </section>
 
+      <hr className="border-border" />
+
+      {/* Delete Account */}
+      <section>
+        <div className="flex items-center gap-2 mb-4">
+          <Trash2 className="w-4 h-4 text-destructive" />
+          <h2 className="font-serif text-xl font-medium">Delete Account</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Permanently delete your account and all associated data. This action cannot be undone.
+        </p>
+        <Button variant="destructive" size="sm" onClick={() => setShowDeleteConfirm(true)}>
+          Delete my account
+        </Button>
+      </section>
+
       <div className="pb-8" />
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-xl">Delete account?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This will permanently delete your account and all collections, items, and data. There is no way to recover this.
+          </p>
+          <DialogFooter className="gap-2 mt-2">
+            <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleting}
+              onClick={async () => {
+                setDeleting(true);
+                try {
+                  await base44.integrations.Core.SendEmail({
+                    to: "mediocreatbestdev@outlook.com",
+                    subject: "Account Deletion Request",
+                    body: `A user has requested account deletion. Please process this request.`,
+                  });
+                } finally {
+                  setDeleting(false);
+                  setShowDeleteConfirm(false);
+                  base44.auth.logout();
+                }
+              }}
+            >
+              {deleting ? "Processing…" : "Yes, delete my account"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

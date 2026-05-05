@@ -1,23 +1,24 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Plus, Library } from "lucide-react";
+import { Plus, Library, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import CollectionCard from "@/components/CollectionCard";
 import CollectionFormDialog from "@/components/CollectionFormDialog";
 import EmptyState from "@/components/EmptyState";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 
 export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const qc = useQueryClient();
 
-  const { data: collections = [], isLoading } = useQuery({
+  const { data: collections = [], isLoading, refetch: refetchCollections } = useQuery({
     queryKey: ["collections"],
     queryFn: () => base44.entities.Collection.list("-created_date"),
   });
 
-  const { data: allItems = [] } = useQuery({
+  const { data: allItems = [], refetch: refetchItems } = useQuery({
     queryKey: ["all-items"],
     queryFn: () => base44.entities.Item.list(),
   });
@@ -32,8 +33,25 @@ export default function Home() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["collections"] }),
   });
 
+  const handleRefresh = async () => {
+    await Promise.all([refetchCollections(), refetchItems()]);
+  };
+
+  const { pulling, pullDistance } = usePullToRefresh(handleRefresh);
+
   return (
     <div className="max-w-6xl mx-auto px-5 sm:px-8 py-12">
+      {/* Pull-to-refresh indicator */}
+      {pulling && (
+        <div
+          className="flex items-center justify-center text-muted-foreground text-xs gap-2 transition-all"
+          style={{ height: pullDistance, overflow: "hidden" }}
+        >
+          <RotateCcw className="w-4 h-4 animate-spin" />
+          {pullDistance >= 70 ? "Release to refresh" : "Pull to refresh"}
+        </div>
+      )}
+
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}

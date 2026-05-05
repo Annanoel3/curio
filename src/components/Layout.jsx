@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { Sparkles, Library, Settings } from "lucide-react";
+import { Sparkles, Library, Settings, Home } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -17,8 +17,22 @@ export default function Layout() {
     .slice(0, 2)
     .toUpperCase();
 
+  const navItems = [
+    { to: "/", icon: Home, label: "Home" },
+    { to: "/appraise", icon: Sparkles, label: "Appraise" },
+    { to: "/settings", icon: Settings, label: "Settings" },
+  ];
+
   return (
-    <div className="min-h-screen bg-background">
+    <div
+      className="min-h-screen bg-background"
+      style={{
+        paddingTop: "env(safe-area-inset-top)",
+        paddingLeft: "env(safe-area-inset-left)",
+        paddingRight: "env(safe-area-inset-right)",
+      }}
+    >
+      {/* Desktop header */}
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/80 border-b border-border/60">
         <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 group">
@@ -73,16 +87,38 @@ export default function Layout() {
         </div>
       </header>
 
-      <main>
+      <main className="pb-20 sm:pb-0">
         <Outlet />
       </main>
 
-      <footer className="border-t border-border/60 mt-24">
+      <footer className="hidden sm:block border-t border-border/60 mt-24">
         <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8 text-xs text-muted-foreground flex items-center justify-between">
           <span>Curio · Your collection, curated.</span>
           <span className="font-serif italic">est. 2026</span>
         </div>
       </footer>
+
+      {/* Mobile bottom nav */}
+      <nav
+        className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/60 flex"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        {navItems.map(({ to, icon: Icon, label }) => {
+          const active = location.pathname === to;
+          return (
+            <Link
+              key={to}
+              to={to}
+              className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 text-[10px] font-medium transition-colors ${
+                active ? "text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              <Icon className={`w-5 h-5 ${active ? "text-foreground" : "text-muted-foreground"}`} />
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }

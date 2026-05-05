@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Plus, ChevronLeft, Share2, Pencil, Trash2, ImageIcon, DollarSign, FileUp } from "lucide-react";
+import { Plus, ChevronLeft, Share2, Pencil, Trash2, ImageIcon, DollarSign, FileUp, RotateCcw } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import CollectionFormDialog from "@/components/CollectionFormDialog";
 import ShareDialog from "@/components/ShareDialog";
 import BulkAddDialog from "@/components/BulkAddDialog";
 import EmptyState from "@/components/EmptyState";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { toast } from "sonner";
 
 export default function CollectionDetail() {
@@ -39,14 +40,23 @@ export default function CollectionDetail() {
 
   const activeCollection = collectionData || collection;
 
-  const { data: items = [], isLoading: loadingItems } = useQuery({
+  const { data: items = [], isLoading: loadingItems, refetch: refetchItems } = useQuery({
     queryKey: ["items", id],
     queryFn: () => base44.entities.Item.filter({ collection_id: id }, "-created_date"),
   });
 
+  // Optimistic create
   const createItem = useMutation({
     mutationFn: (data) => base44.entities.Item.create({ ...data, collection_id: id }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["items", id] }),
+    onMutate: async (data) => {
+      await qc.cancelQueries({ queryKey: ["items", id] });
+      const prev = qc.getQueryData(["items", id]);
+      const optimistic = { ...data, collection_id: id, id: `temp-${Date.now()}`, created_date: new Date().toISOString() };
+      qc.setQueryData(["items", id], (old = []) => [optimistic, ...old]);
+      return { prev };
+    },
+    onError: (_, __, ctx) => qc.setQueryData(["items", id], ctx.prev),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["items", id] }),
   });
 
   const updateCollection = useMutation({
@@ -60,19 +70,44 @@ export default function CollectionDetail() {
 
   const deleteItem = useMutation({
     mutationFn: (itemId) => base44.entities.Item.delete(itemId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["items", id] });
-      toast.success("Item removed");
+    onMutate: async (itemId) => {
+      await qc.cancelQueries({ queryKey: ["items", id] });
+      const prev = qc.getQueryData(["items", id]);
+      qc.setQueryData(["items", id], (old = []) => old.filter((i) => i.id !== itemId));
+      return { prev };
     },
+    onError: (_, __, ctx) => qc.setQueryData(["items", id], ctx.prev),
+    onSuccess: () => toast.success("Item removed"),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["items", id] }),
   });
 
+  // Optimistic mark sold / owned
   const markSold = useMutation({
     mutationFn: (itemId) => base44.entities.Item.update(itemId, { status: "sold" }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["items", id] });
-      toast.success("Marked as sold");
+    onMutate: async (itemId) => {
+      await qc.cancelQueries({ queryKey: ["items", id] });
+      const prev = qc.getQueryData(["items", id]);
+      qc.setQueryData(["items", id], (old = []) => old.map((i) => i.id === itemId ? { ...i, status: "sold" } : i));
+      return { prev };
     },
+    onError: (_, __, ctx) => qc.setQueryData(["items", id], ctx.prev),
+    onSuccess: () => toast.success("Marked as sold"),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["items", id] }),
   });
+
+  const markOwned = useMutation({
+    mutationFn: (itemId) => base44.entities.Item.update(itemId, { status: "owned" }),
+    onMutate: async (itemId) => {
+      await qc.cancelQueries({ queryKey: ["items", id] });
+      const prev = qc.getQueryData(["items", id]);
+      qc.setQueryData(["items", id], (old = []) => old.map((i) => i.id === itemId ? { ...i, status: "owned" } : i));
+      return { prev };
+    },
+    onError: (_, __, ctx) => qc.setQueryData(["items", id], ctx.prev),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["items", id] }),
+  });
+
+  const { pulling, pullDistance } = usePullToRefresh(refetchItems);
 
   const allTags = useMemo(() => {
     const set = new Set();
@@ -110,6 +145,17 @@ export default function CollectionDetail() {
 
   return (
     <div className="max-w-6xl mx-auto px-5 sm:px-8 py-10">
+      {/* Pull-to-refresh indicator */}
+      {pulling && (
+        <div
+          className="flex items-center justify-center text-muted-foreground text-xs gap-2 transition-all"
+          style={{ height: pullDistance, overflow: "hidden" }}
+        >
+          <RotateCcw className="w-4 h-4 animate-spin" />
+          {pullDistance >= 70 ? "Release to refresh" : "Pull to refresh"}
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-10">
         <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6">
@@ -125,7 +171,7 @@ export default function CollectionDetail() {
               <p className="text-muted-foreground mt-2 max-w-xl">{activeCollection.description}</p>
             )}
           </div>
-          <div className="flex gap-2 shrink-0">
+          <div className="flex gap-2 shrink-0 flex-wrap">
             <Button variant="outline" size="sm" onClick={() => setShowShare(true)} className="gap-1.5">
               <Share2 className="w-3.5 h-3.5" /> Share
             </Button>
@@ -228,7 +274,7 @@ export default function CollectionDetail() {
                     </DropdownMenuItem>
                   )}
                   {item.status === "sold" && (
-                    <DropdownMenuItem onClick={() => base44.entities.Item.update(item.id, { status: "owned" }).then(() => qc.invalidateQueries({ queryKey: ["items", id] }))} className="gap-2">
+                    <DropdownMenuItem onClick={() => markOwned.mutate(item.id)} className="gap-2">
                       <DollarSign className="w-3.5 h-3.5" /> Mark as owned
                     </DropdownMenuItem>
                   )}

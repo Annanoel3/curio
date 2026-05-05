@@ -68,6 +68,17 @@
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
     font-feature-settings: "ss01", "cv11";
+    overscroll-behavior-y: none;
+  }
+
+  button, a, [role="button"] {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  svg {
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .font-serif {
