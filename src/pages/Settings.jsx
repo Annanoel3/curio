@@ -127,7 +127,7 @@ export default function Settings() {
             <p>We may update this Privacy Policy periodically. We will notify you of significant changes via email or in-app notice. Continued use of Curio after changes constitutes acceptance of the updated policy.</p>
           </div>
 
-          <p>If you have questions about this policy, contact us at <span className="text-foreground">privacy@curio.app</span>.</p>
+          <p>If you have questions about this policy, contact us at <a href="mailto:mediocreatbestdev@gmail.com" className="text-foreground underline">mediocreatbestdev@gmail.com</a>.</p>
         </div>
       </section>
 
@@ -159,7 +159,7 @@ export default function Settings() {
             <p>You may not copy, reproduce, distribute, modify, or create derivative works from any part of the Curio application without prior written consent. Unauthorized use of Curio's proprietary materials may violate copyright, trademark, and other applicable laws.</p>
           </div>
 
-          <p>For licensing inquiries, contact <span className="text-foreground">legal@curio.app</span>.</p>
+          <p>For licensing inquiries, contact <a href="mailto:mediocreatbestdev@gmail.com" className="text-foreground underline">mediocreatbestdev@gmail.com</a>.</p>
         </div>
       </section>
 

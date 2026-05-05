@@ -12,13 +12,13 @@ const UserNotRegisteredError = () => {
           </div>
           <h1 className="text-3xl font-bold text-slate-900 mb-4">Access Restricted</h1>
           <p className="text-slate-600 mb-8">
-            You are not registered to use this application. Please contact the app administrator to request access.
+            You are not registered to use this application. Please contact the administrator to request access.
           </p>
           <div className="p-4 bg-slate-50 rounded-md text-sm text-slate-600">
             <p>If you believe this is an error, you can:</p>
             <ul className="list-disc list-inside mt-2 space-y-1">
               <li>Verify you are logged in with the correct account</li>
-              <li>Contact the app administrator for access</li>
+              <li>Email <a href="mailto:mediocreatbestdev@gmail.com" className="underline text-slate-800">mediocreatbestdev@gmail.com</a> for access</li>
               <li>Try logging out and back in again</li>
             </ul>
           </div>
