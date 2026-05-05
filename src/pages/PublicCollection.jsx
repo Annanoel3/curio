@@ -63,12 +63,9 @@ export default function PublicCollection() {
   useEffect(() => {
     async function load() {
       try {
-        const cols = await base44.entities.Collection.filter({ share_token: token, is_public: true });
-        if (!cols.length) { setError(true); setLoading(false); return; }
-        const col = cols[0];
-        setCollection(col);
-        const its = await base44.entities.Item.filter({ collection_id: col.id }, "-created_date");
-        setItems(its);
+        const res = await base44.functions.invoke("getPublicCollection", { share_token: token });
+        setCollection(res.data.collection);
+        setItems(res.data.items);
       } catch {
         setError(true);
       } finally {
