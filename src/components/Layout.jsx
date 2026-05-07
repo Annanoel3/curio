@@ -87,7 +87,7 @@ export default function Layout() {
         </div>
       </header>
 
-      <main className="pb-20 sm:pb-0">
+      <main className="pb-28 sm:pb-0">
         <Outlet />
       </main>
 
@@ -100,24 +100,27 @@ export default function Layout() {
 
       {/* Mobile bottom nav */}
       <nav
-        className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/60 flex"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/60 flex flex-col"
       >
-        {navItems.map(({ to, icon: Icon, label }) => {
-          const active = location.pathname === to;
-          return (
-            <Link
-              key={to}
-              to={to}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 text-[10px] font-medium transition-colors ${
-                active ? "text-foreground" : "text-muted-foreground"
-              }`}
-            >
-              <Icon className={`w-5 h-5 ${active ? "text-foreground" : "text-muted-foreground"}`} />
-              {label}
-            </Link>
-          );
-        })}
+        <div className="flex">
+          {navItems.map(({ to, icon: Icon, label }) => {
+            const active = location.pathname === to;
+            return (
+              <Link
+                key={to}
+                to={to}
+                className={`flex-1 flex flex-col items-center justify-center gap-1 pt-3 pb-2 text-[10px] font-medium transition-colors ${
+                  active ? "text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                <Icon className={`w-5 h-5 ${active ? "text-foreground" : "text-muted-foreground"}`} />
+                {label}
+              </Link>
+            );
+          })}
+        </div>
+        {/* Safe area spacer for Android gesture nav */}
+        <div style={{ height: "env(safe-area-inset-bottom, 16px)" }} />
       </nav>
     </div>
   );
