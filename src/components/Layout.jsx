@@ -101,7 +101,7 @@ export default function Layout() {
       {/* Mobile bottom nav */}
       <nav
         className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/60 flex"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 48px)" }}
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 30px)" }}
       >
         {navItems.map(({ to, icon: Icon, label }) => {
           const active = location.pathname === to;
