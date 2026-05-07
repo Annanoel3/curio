@@ -5,6 +5,8 @@ const config: CapacitorConfig = {
   appName: 'Curio',
   webDir: 'dist',                   // Vite's build output folder
   server: {
+    url: 'https://curio.website',
+    cleartext: false,
     androidScheme: 'https',
   },
   plugins: {
