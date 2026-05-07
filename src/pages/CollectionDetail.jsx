@@ -14,6 +14,7 @@ import CollectionFormDialog from "@/components/CollectionFormDialog";
 import ShareDialog from "@/components/ShareDialog";
 import BulkAddDialog from "@/components/BulkAddDialog";
 import EmptyState from "@/components/EmptyState";
+import VideoAdModal from "@/components/VideoAdModal";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { toast } from "sonner";
 
@@ -26,6 +27,7 @@ export default function CollectionDetail() {
   const [showEditCollection, setShowEditCollection] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showBulkAdd, setShowBulkAdd] = useState(false);
+  const [showVideoAd, setShowVideoAd] = useState(false);
   const [collectionData, setCollectionData] = useState(null);
 
   const { data: collection, isLoading: loadingCol } = useQuery({
@@ -296,7 +298,10 @@ export default function CollectionDetail() {
       <ItemFormDialog
         open={showAddItem}
         onOpenChange={setShowAddItem}
-        onSubmit={(data) => createItem.mutateAsync(data)}
+        onSubmit={async (data) => {
+          await createItem.mutateAsync(data);
+          setShowVideoAd(true);
+        }}
         collectionType={activeCollection.type}
       />
       <CollectionFormDialog
@@ -318,6 +323,7 @@ export default function CollectionDetail() {
         collectionType={activeCollection.type}
         onSuccess={() => qc.invalidateQueries({ queryKey: ["items", id] })}
       />
+      <VideoAdModal open={showVideoAd} onClose={() => setShowVideoAd(false)} />
     </div>
   );
 }
