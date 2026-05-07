@@ -323,7 +323,11 @@ export default function CollectionDetail() {
         onOpenChange={setShowBulkAdd}
         collectionId={id}
         collectionType={activeCollection.type}
-        onSuccess={() => qc.invalidateQueries({ queryKey: ["items", id] })}
+        onSuccess={async () => {
+          qc.invalidateQueries({ queryKey: ["items", id] });
+          const adShown = await showInterstitialAd();
+          if (!adShown) setShowVideoAd(true);
+        }}
       />
       <VideoAdModal open={showVideoAd} onClose={() => setShowVideoAd(false)} />
     </div>
