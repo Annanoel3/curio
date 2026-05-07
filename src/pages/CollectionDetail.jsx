@@ -15,6 +15,7 @@ import ShareDialog from "@/components/ShareDialog";
 import BulkAddDialog from "@/components/BulkAddDialog";
 import EmptyState from "@/components/EmptyState";
 import VideoAdModal from "@/components/VideoAdModal";
+import { showInterstitialAd } from "@/lib/admob";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { toast } from "sonner";
 
@@ -300,7 +301,8 @@ export default function CollectionDetail() {
         onOpenChange={setShowAddItem}
         onSubmit={async (data) => {
           await createItem.mutateAsync(data);
-          setShowVideoAd(true);
+          const adShown = await showInterstitialAd();
+          if (!adShown) setShowVideoAd(true); // fallback for web preview
         }}
         collectionType={activeCollection.type}
       />

@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.curio.app',          // Change to your desired app ID (e.g. com.yourname.curio)
+  appId: 'com.curio.app',
   appName: 'Curio',
   webDir: 'dist',                   // Vite's build output folder
   server: {

@@ -15,6 +15,7 @@
     "cap:build": "npm run build && npx cap sync android"
   },
   "dependencies": {
+    "@capacitor-community/admob": "^6.0.0",
     "@capacitor/android": "^7.0.0",
     "@capacitor/core": "^7.0.0",
     "@capacitor/splash-screen": "^7.0.0",
