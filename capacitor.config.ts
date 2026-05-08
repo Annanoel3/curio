@@ -8,6 +8,13 @@ const config: CapacitorConfig = {
     url: 'https://curio.website',
     cleartext: false,
     androidScheme: 'https',
+    allowNavigation: [
+      '*.base44.app',
+      'base44.app',
+      'accounts.google.com',
+      '*.google.com',
+      'curio.website',
+    ],
   },
   plugins: {
     SplashScreen: {
@@ -24,7 +31,7 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: false,
     captureInput: true,
-    webContentsDebuggingEnabled: false,  // Set true only during development
+    webContentsDebuggingEnabled: true,  // Temporarily on for debugging
   },
 };
 

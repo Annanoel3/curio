@@ -1,20 +1,22 @@
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 
-const APP_ID     = 'ca-app-pub-7979856440890193~8062655593';
-const AD_UNIT_ID = 'ca-app-pub-7979856440890193/9179846434';
+// Switch back to real ID once confirmed working:
+// const AD_UNIT_ID = 'ca-app-pub-7979856440890193/9179846434';
 
-// During testing, swap AD_UNIT_ID for this Google test ID so you don't
-// accidentally click real ads on your own device:
-// const AD_UNIT_ID = 'ca-app-pub-3940256099942544/1033173712';
+// Google's official test interstitial — always serves immediately
+const AD_UNIT_ID = 'ca-app-pub-3940256099942544/1033173712';
 
-let AdMob = null;
+// Use registerPlugin instead of a dynamic npm import so this works
+// even when the app loads from a remote URL (curio.website via server.url).
+// registerPlugin creates a bridge to the native Android plugin directly.
+const AdMob = Capacitor.isNativePlatform()
+  ? registerPlugin('AdMob')
+  : null;
 
 /** Call once when the app starts (native only — no-op on web). */
 export async function initAdMob() {
-  if (!Capacitor.isNativePlatform()) return;
+  if (!AdMob) return;
   try {
-    const mod = await import('@capacitor-community/admob');
-    AdMob = mod.AdMob;
     await AdMob.initialize({ initializeForTesting: false });
     console.log('[AdMob] initialized');
   } catch (e) {
@@ -27,7 +29,7 @@ export async function initAdMob() {
  * Returns true if the ad was shown, false if unavailable (e.g. web build).
  */
 export async function showInterstitialAd() {
-  if (!Capacitor.isNativePlatform() || !AdMob) return false;
+  if (!AdMob) return false;
   try {
     await AdMob.prepareInterstitial({ adId: AD_UNIT_ID, isTesting: false });
     await AdMob.showInterstitial();
