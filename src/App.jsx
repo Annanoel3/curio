@@ -14,6 +14,7 @@ import ItemDetail from '@/pages/ItemDetail';
 import Appraise from '@/pages/Appraise';
 import PublicCollection from '@/pages/PublicCollection';
 import Settings from '@/pages/Settings';
+import Legal from '@/pages/Legal';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -59,6 +60,7 @@ function App() {
         <Routes>
           {/* Fully public — no auth wrapper at all */}
           <Route path="/share/:token" element={<PublicCollection />} />
+          <Route path="/legal" element={<Legal />} />
 
           {/* Everything else requires auth */}
           <Route
