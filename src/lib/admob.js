@@ -30,9 +30,18 @@ export async function showInterstitialAd() {
   }
 }
 
-export async function maybeShowAdOnOpen() {
+export function getAppOpenCount() {
   const count = parseInt(localStorage.getItem('appOpenCount') || '0') + 1;
   localStorage.setItem('appOpenCount', String(count));
+  return count;
+}
+
+export function isFirstLaunch() {
+  return getAppOpenCount() === 1;
+}
+
+export async function maybeShowAdOnOpen() {
+  const count = parseInt(localStorage.getItem('appOpenCount') || '0');
 
   if (count % SHOW_EVERY_N_OPENS === 0) {
     await new Promise(resolve => setTimeout(resolve, AD_DELAY_MS));

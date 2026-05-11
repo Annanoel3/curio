@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster"
 import { useEffect } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query'
-import { initAdMob, maybeShowAdOnOpen } from '@/lib/admob';
+import { initAdMob, maybeShowAdOnOpen, isFirstLaunch } from '@/lib/admob';
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
@@ -52,7 +52,12 @@ const AuthenticatedApp = () => {
 };
 
 function App() {
-  useEffect(() => { initAdMob().then(() => maybeShowAdOnOpen()); }, []);
+  useEffect(() => {
+    const isFirst = isFirstLaunch();
+    if (!isFirst) {
+      initAdMob().then(() => maybeShowAdOnOpen());
+    }
+  }, []);
 
   return (
     <QueryClientProvider client={queryClientInstance}>
