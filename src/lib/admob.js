@@ -1,33 +1,23 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 
-// Switch back to real ID once confirmed working:
-// const AD_UNIT_ID = 'ca-app-pub-7979856440890193/9179846434';
+const AD_UNIT_ID = 'ca-app-pub-7979856440890193/9179846434';
+const SHOW_EVERY_N_OPENS = 3;  // Show ad every 3rd app open
+const AD_DELAY_MS = 10000;     // Wait 10 seconds before showing
 
-// Google's official test interstitial — always serves immediately
-const AD_UNIT_ID = 'ca-app-pub-3940256099942544/1033173712';
+let AdMob = null;
 
-// Use registerPlugin instead of a dynamic npm import so this works
-// even when the app loads from a remote URL (curio.website via server.url).
-// registerPlugin creates a bridge to the native Android plugin directly.
-const AdMob = Capacitor.isNativePlatform()
-  ? registerPlugin('AdMob')
-  : null;
-
-/** Call once when the app starts (native only — no-op on web). */
 export async function initAdMob() {
-  if (!AdMob) return;
+  if (!Capacitor.isNativePlatform()) return;
   try {
+    AdMob = registerPlugin('AdMob');
     await AdMob.initialize({ initializeForTesting: false });
     console.log('[AdMob] initialized');
   } catch (e) {
     console.warn('[AdMob] init failed:', e);
+    AdMob = null;
   }
 }
 
-/**
- * Load and show a full-screen interstitial ad.
- * Returns true if the ad was shown, false if unavailable (e.g. web build).
- */
 export async function showInterstitialAd() {
   if (!AdMob) return false;
   try {
@@ -37,5 +27,15 @@ export async function showInterstitialAd() {
   } catch (e) {
     console.warn('[AdMob] interstitial failed:', e);
     return false;
+  }
+}
+
+export async function maybeShowAdOnOpen() {
+  const count = parseInt(localStorage.getItem('appOpenCount') || '0') + 1;
+  localStorage.setItem('appOpenCount', String(count));
+
+  if (count % SHOW_EVERY_N_OPENS === 0) {
+    await new Promise(resolve => setTimeout(resolve, AD_DELAY_MS));
+    await showInterstitialAd();
   }
 }
