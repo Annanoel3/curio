@@ -15,7 +15,7 @@ export default function Home() {
 
   const { data: collections = [], isLoading, refetch: refetchCollections } = useQuery({
     queryKey: ["collections"],
-    queryFn: () => base44.entities.Collection.list("-created_date"),
+    queryFn: () => base44.entities.Collection.list("-updated_date"),
   });
 
   const { data: allItems = [], refetch: refetchItems } = useQuery({
