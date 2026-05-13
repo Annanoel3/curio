@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster"
 import { useEffect } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query'
-import { initAdMob, maybeShowAdOnOpen } from '@/lib/admob';
+import { initAdMob, maybeShowAdOnOpen, isFirstLaunch } from '@/lib/admob';
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
@@ -14,6 +14,7 @@ import ItemDetail from '@/pages/ItemDetail';
 import Appraise from '@/pages/Appraise';
 import PublicCollection from '@/pages/PublicCollection';
 import Settings from '@/pages/Settings';
+import Legal from '@/pages/Legal';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -51,7 +52,12 @@ const AuthenticatedApp = () => {
 };
 
 function App() {
-  useEffect(() => { initAdMob().then(() => maybeShowAdOnOpen()); }, []);
+  useEffect(() => {
+    const isFirst = isFirstLaunch();
+    if (!isFirst) {
+      initAdMob().then(() => maybeShowAdOnOpen());
+    }
+  }, []);
 
   return (
     <QueryClientProvider client={queryClientInstance}>
@@ -59,6 +65,7 @@ function App() {
         <Routes>
           {/* Fully public — no auth wrapper at all */}
           <Route path="/share/:token" element={<PublicCollection />} />
+          <Route path="/legal" element={<Legal />} />
 
           {/* Everything else requires auth */}
           <Route
