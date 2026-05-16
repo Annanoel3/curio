@@ -12,7 +12,14 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 
 export default function Home() {
   const [showForm, setShowForm] = useState(false);
-  const [collectionSort, setCollectionSort] = useState("updated");
+  const [collectionSort, setCollectionSort] = useState(
+    () => localStorage.getItem("curio-collection-sort") || "updated"
+  );
+
+  const handleCollectionSort = (val) => {
+    localStorage.setItem("curio-collection-sort", val);
+    setCollectionSort(val);
+  };
 
   const COLLECTION_SORT_OPTIONS = [
     { value: "updated", label: "Recently updated" },
@@ -85,7 +92,7 @@ export default function Home() {
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          <SortSelect value={collectionSort} onChange={setCollectionSort} options={COLLECTION_SORT_OPTIONS} />
+          <SortSelect value={collectionSort} onChange={handleCollectionSort} options={COLLECTION_SORT_OPTIONS} />
           <Button onClick={() => setShowForm(true)} className="gap-2 shrink-0">
             <Plus className="w-4 h-4" />
             New collection

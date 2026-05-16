@@ -25,7 +25,14 @@ export default function CollectionDetail() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [activeTag, setActiveTag] = useState(null);
-  const [itemSort, setItemSort] = useState("newest");
+  const [itemSort, setItemSort] = useState(
+    () => localStorage.getItem("curio-item-sort") || "newest"
+  );
+
+  const handleItemSort = (val) => {
+    localStorage.setItem("curio-item-sort", val);
+    setItemSort(val);
+  };
 
   const ITEM_SORT_OPTIONS = [
     { value: "newest", label: "Recently added" },
@@ -218,7 +225,7 @@ export default function CollectionDetail() {
         <div className="flex-1">
           <SearchBar value={search} onChange={setSearch} />
         </div>
-        <SortSelect value={itemSort} onChange={setItemSort} options={ITEM_SORT_OPTIONS} />
+        <SortSelect value={itemSort} onChange={handleItemSort} options={ITEM_SORT_OPTIONS} />
       </div>
 
       {/* Tag filters */}
