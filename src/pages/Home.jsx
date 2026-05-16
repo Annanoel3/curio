@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Plus, Library, RotateCcw } from "lucide-react";
@@ -7,10 +7,20 @@ import { motion } from "framer-motion";
 import CollectionCard from "@/components/CollectionCard";
 import CollectionFormDialog from "@/components/CollectionFormDialog";
 import EmptyState from "@/components/EmptyState";
+import SortSelect from "@/components/SortSelect";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 
 export default function Home() {
   const [showForm, setShowForm] = useState(false);
+  const [collectionSort, setCollectionSort] = useState("updated");
+
+  const COLLECTION_SORT_OPTIONS = [
+    { value: "updated", label: "Recently updated" },
+    { value: "az", label: "A → Z" },
+    { value: "za", label: "Z → A" },
+    { value: "newest", label: "Newest first" },
+    { value: "oldest", label: "Oldest first" },
+  ];
   const qc = useQueryClient();
 
   const { data: collections = [], isLoading, refetch: refetchCollections } = useQuery({
@@ -22,6 +32,17 @@ export default function Home() {
     queryKey: ["all-items"],
     queryFn: () => base44.entities.Item.list(),
   });
+
+  const sortedCollections = useMemo(() => {
+    const arr = [...collections];
+    switch (collectionSort) {
+      case "az": return arr.sort((a, b) => a.name.localeCompare(b.name));
+      case "za": return arr.sort((a, b) => b.name.localeCompare(a.name));
+      case "newest": return arr.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+      case "oldest": return arr.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+      default: return arr.sort((a, b) => new Date(b.updated_date) - new Date(a.updated_date));
+    }
+  }, [collections, collectionSort]);
 
   const itemCounts = allItems.reduce((acc, item) => {
     acc[item.collection_id] = (acc[item.collection_id] || 0) + 1;
@@ -63,10 +84,13 @@ export default function Home() {
             The Curio Cabinet
           </h1>
         </div>
-        <Button onClick={() => setShowForm(true)} className="gap-2 shrink-0">
-          <Plus className="w-4 h-4" />
-          New collection
-        </Button>
+        <div className="flex items-center gap-2">
+          <SortSelect value={collectionSort} onChange={setCollectionSort} options={COLLECTION_SORT_OPTIONS} />
+          <Button onClick={() => setShowForm(true)} className="gap-2 shrink-0">
+            <Plus className="w-4 h-4" />
+            New collection
+          </Button>
+        </div>
       </motion.div>
 
       {isLoading ? (
@@ -88,7 +112,7 @@ export default function Home() {
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {collections.map((c, i) => (
+          {sortedCollections.map((c, i) => (
             <CollectionCard
               key={c.id}
               collection={c}

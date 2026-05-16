@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import SearchBar from "@/components/SearchBar";
+import SortSelect from "@/components/SortSelect";
 import ItemCard from "@/components/ItemCard";
 import ItemFormDialog from "@/components/ItemFormDialog";
 import CollectionFormDialog from "@/components/CollectionFormDialog";
@@ -24,6 +25,16 @@ export default function CollectionDetail() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [activeTag, setActiveTag] = useState(null);
+  const [itemSort, setItemSort] = useState("newest");
+
+  const ITEM_SORT_OPTIONS = [
+    { value: "newest", label: "Recently added" },
+    { value: "oldest", label: "Oldest first" },
+    { value: "az", label: "A → Z" },
+    { value: "za", label: "Z → A" },
+    { value: "value_high", label: "Value: high → low" },
+    { value: "value_low", label: "Value: low → high" },
+  ];
   const [showAddItem, setShowAddItem] = useState(false);
   const [showEditCollection, setShowEditCollection] = useState(false);
   const [showShare, setShowShare] = useState(false);
@@ -118,8 +129,8 @@ export default function CollectionDetail() {
     return [...set].sort();
   }, [items]);
 
-  const filtered = useMemo(() => {
-    return items.filter((item) => {
+  const sortedFiltered = useMemo(() => {
+    const filtered = items.filter((item) => {
       const q = search.toLowerCase();
       const matchesSearch =
         !q ||
@@ -129,7 +140,18 @@ export default function CollectionDetail() {
       const matchesTag = !activeTag || item.tags?.includes(activeTag);
       return matchesSearch && matchesTag;
     });
-  }, [items, search, activeTag]);
+    const arr = [...filtered];
+    switch (itemSort) {
+      case "az": return arr.sort((a, b) => a.title?.localeCompare(b.title));
+      case "za": return arr.sort((a, b) => b.title?.localeCompare(a.title));
+      case "oldest": return arr.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+      case "value_high": return arr.sort((a, b) => (b.estimated_value ?? b.value_high ?? 0) - (a.estimated_value ?? a.value_high ?? 0));
+      case "value_low": return arr.sort((a, b) => (a.estimated_value ?? a.value_high ?? 0) - (b.estimated_value ?? b.value_high ?? 0));
+      default: return arr.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+    }
+  }, [items, search, activeTag, itemSort]);
+
+
 
   if (loadingCol) {
     return (
@@ -191,9 +213,12 @@ export default function CollectionDetail() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="mb-6">
-        <SearchBar value={search} onChange={setSearch} />
+      {/* Search + Sort */}
+      <div className="flex gap-2 mb-6">
+        <div className="flex-1">
+          <SearchBar value={search} onChange={setSearch} />
+        </div>
+        <SortSelect value={itemSort} onChange={setItemSort} options={ITEM_SORT_OPTIONS} />
       </div>
 
       {/* Tag filters */}
@@ -232,7 +257,7 @@ export default function CollectionDetail() {
             <div key={i} className="rounded-xl bg-secondary aspect-square animate-pulse" />
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : sortedFiltered.length === 0 ? (
         <EmptyState
           icon={ImageIcon}
           title={search || activeTag ? "No items match" : "Nothing here yet"}
@@ -251,7 +276,7 @@ export default function CollectionDetail() {
         />
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filtered.map((item, i) => (
+          {sortedFiltered.map((item, i) => (
             <div key={item.id} className="relative group">
               <ItemCard item={item} index={i} to={`/collections/${id}/items/${item.id}`} />
               {item.status === "sold" && (
