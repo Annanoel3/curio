@@ -33,7 +33,7 @@ export default function Layout() {
       }}
     >
       {/* Desktop header */}
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/80 border-b border-border/60">
+      <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/80 border-b border-border/60" style={{ paddingTop: "env(safe-area-inset-top)" }}>
         <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 group">
             <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center">
