@@ -87,20 +87,20 @@ export default function Layout() {
         </div>
       </header>
 
-      <main className="pb-28 sm:pb-0">
+      <main className="pb-28 md:pb-0">
         <Outlet />
       </main>
 
-      <footer className="hidden sm:block border-t border-border/60 mt-24">
+      <footer className="hidden md:block border-t border-border/60 mt-24">
         <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8 text-xs text-muted-foreground flex items-center justify-between">
           <span>Curio · Your collection, curated.</span>
           <span className="font-serif italic">est. 2026</span>
         </div>
       </footer>
 
-      {/* Mobile bottom nav */}
+      {/* Mobile/tablet bottom nav */}
       <nav
-        className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/60 flex"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/60 flex"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 30px)" }}
       >
         {navItems.map(({ to, icon: Icon, label }) => {
