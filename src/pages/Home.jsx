@@ -8,7 +8,7 @@ import CollectionCard from "@/components/CollectionCard";
 import CollectionFormDialog from "@/components/CollectionFormDialog";
 import EmptyState from "@/components/EmptyState";
 import SortSelect from "@/components/SortSelect";
-import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+
 
 export default function Home() {
   const [showForm, setShowForm] = useState(false);
@@ -65,20 +65,8 @@ export default function Home() {
     await Promise.all([refetchCollections(), refetchItems()]);
   };
 
-  const { pulling, pullDistance } = usePullToRefresh(handleRefresh);
-
   return (
     <div className="max-w-6xl mx-auto px-5 sm:px-8 py-12">
-      {/* Pull-to-refresh indicator */}
-      {pulling && (
-        <div
-          className="flex items-center justify-center text-muted-foreground text-xs gap-2 transition-all"
-          style={{ height: pullDistance, overflow: "hidden" }}
-        >
-          <RotateCcw className="w-4 h-4 animate-spin" />
-          {pullDistance >= 70 ? "Release to refresh" : "Pull to refresh"}
-        </div>
-      )}
 
       <motion.div
         initial={{ opacity: 0, y: -10 }}

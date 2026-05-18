@@ -17,7 +17,7 @@ import BulkAddDialog from "@/components/BulkAddDialog";
 import EmptyState from "@/components/EmptyState";
 import VideoAdModal from "@/components/VideoAdModal";
 import { showInterstitialAd } from "@/lib/admob";
-import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+
 import { toast } from "sonner";
 
 export default function CollectionDetail() {
@@ -128,8 +128,6 @@ export default function CollectionDetail() {
     onSettled: () => qc.invalidateQueries({ queryKey: ["items", id] }),
   });
 
-  const { pulling, pullDistance } = usePullToRefresh(refetchItems);
-
   const allTags = useMemo(() => {
     const set = new Set();
     items.forEach((item) => item.tags?.forEach((t) => set.add(t)));
@@ -177,17 +175,6 @@ export default function CollectionDetail() {
 
   return (
     <div className="max-w-6xl mx-auto px-5 sm:px-8 py-10">
-      {/* Pull-to-refresh indicator */}
-      {pulling && (
-        <div
-          className="flex items-center justify-center text-muted-foreground text-xs gap-2 transition-all"
-          style={{ height: pullDistance, overflow: "hidden" }}
-        >
-          <RotateCcw className="w-4 h-4 animate-spin" />
-          {pullDistance >= 70 ? "Release to refresh" : "Pull to refresh"}
-        </div>
-      )}
-
       {/* Header */}
       <div className="mb-10">
         <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6">
