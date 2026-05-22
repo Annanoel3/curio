@@ -16,6 +16,15 @@ import PublicCollection from '@/pages/PublicCollection';
 import Settings from '@/pages/Settings';
 import Legal from '@/pages/Legal';
 
+// Sentry loaded via CDN in index.html
+const Sentry = window.Sentry;
+if (Sentry) {
+  Sentry.init({
+    dsn: "https://44fc97fefd8e31a2e1759d3f1cbc5fa4@o4511434142580736.ingest.us.sentry.io/4511434177052672",
+    environment: "production",
+  });
+}
+
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
