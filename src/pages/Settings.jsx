@@ -93,12 +93,12 @@ export default function Settings() {
           You may request deletion of your data or your entire account at any time. We'll process your request within 30 days.
         </p>
         <div className="flex flex-col sm:flex-row gap-3">
-          <Button variant="outline" className="flex-1" onClick={() => { setRequestType("data"); setRequestMessage(""); setRequestSent(false); }}>
-            Request data deletion
-          </Button>
-          <Button variant="outline" className="flex-1" onClick={() => { setRequestType("account"); setRequestMessage(""); setRequestSent(false); }}>
-            Request account deletion
-          </Button>
+          <Link to="/delete-request" className="flex-1">
+            <Button variant="outline" className="w-full">Request data deletion</Button>
+          </Link>
+          <Link to="/delete-request" className="flex-1">
+            <Button variant="outline" className="w-full">Request account deletion</Button>
+          </Link>
         </div>
       </section>
 
@@ -113,9 +113,9 @@ export default function Settings() {
         <p className="text-sm text-muted-foreground mb-4">
           Permanently delete your account and all associated data. This action cannot be undone.
         </p>
-        <Button variant="destructive" size="sm" onClick={() => { setRequestType("account"); setRequestMessage(""); setRequestSent(false); }}>
-          Delete my account
-        </Button>
+        <Link to="/delete-request">
+          <Button variant="destructive" size="sm">Delete my account</Button>
+        </Link>
       </section>
 
       <div className="pb-8" />

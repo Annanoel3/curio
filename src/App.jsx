@@ -15,6 +15,7 @@ import Appraise from '@/pages/Appraise';
 import PublicCollection from '@/pages/PublicCollection';
 import Settings from '@/pages/Settings';
 import Legal from '@/pages/Legal';
+import DeleteRequest from '@/pages/DeleteRequest';
 
 // Sentry loaded via CDN in index.html
 const Sentry = window.Sentry;
@@ -53,6 +54,7 @@ const AuthenticatedApp = () => {
         <Route path="/collections/:collectionId/items/:itemId" element={<ItemDetail />} />
         <Route path="/appraise" element={<Appraise />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/delete-request" element={<DeleteRequest />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />
