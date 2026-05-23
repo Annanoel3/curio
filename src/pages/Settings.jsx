@@ -113,7 +113,7 @@ export default function Settings() {
         <p className="text-sm text-muted-foreground mb-4">
           Permanently delete your account and all associated data. This action cannot be undone.
         </p>
-        <Button variant="destructive" size="sm" onClick={() => setShowDeleteConfirm(true)}>
+        <Button variant="destructive" size="sm" onClick={() => { setRequestType("account"); setRequestMessage(""); setRequestSent(false); }}>
           Delete my account
         </Button>
       </section>
