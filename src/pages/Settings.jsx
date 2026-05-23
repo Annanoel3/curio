@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Moon, Sun, Monitor, Trash2 } from "lucide-react";
+import { Moon, Sun, Monitor, Trash2, Send } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { base44 } from "@/api/base44Client";
 
 export const THEME_KEY = "curio-theme";
@@ -23,6 +24,10 @@ export default function Settings() {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "system");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [requestType, setRequestType] = useState(null); // 'data' | 'account'
+  const [requestMessage, setRequestMessage] = useState("");
+  const [requestSending, setRequestSending] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
 
   useEffect(() => {
     applyTheme(theme);
@@ -81,6 +86,24 @@ export default function Settings() {
 
       <hr className="border-border" />
 
+      {/* Data & Account Requests */}
+      <section>
+        <h2 className="font-serif text-xl font-medium mb-1">Data & Account Requests</h2>
+        <p className="text-sm text-muted-foreground mb-6">
+          You may request deletion of your data or your entire account at any time. We'll process your request within 30 days.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button variant="outline" className="flex-1" onClick={() => { setRequestType("data"); setRequestMessage(""); setRequestSent(false); }}>
+            Request data deletion
+          </Button>
+          <Button variant="outline" className="flex-1" onClick={() => { setRequestType("account"); setRequestMessage(""); setRequestSent(false); }}>
+            Request account deletion
+          </Button>
+        </div>
+      </section>
+
+      <hr className="border-border" />
+
       {/* Delete Account */}
       <section>
         <div className="flex items-center gap-2 mb-4">
@@ -96,6 +119,62 @@ export default function Settings() {
       </section>
 
       <div className="pb-8" />
+
+      {/* Data/Account deletion request dialog */}
+      <Dialog open={!!requestType} onOpenChange={(open) => { if (!open) setRequestType(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-xl">
+              {requestType === "data" ? "Request Data Deletion" : "Request Account Deletion"}
+            </DialogTitle>
+          </DialogHeader>
+          {requestSent ? (
+            <p className="text-sm text-muted-foreground py-2">
+              Your request has been sent. We'll get back to you within 30 days.
+            </p>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                {requestType === "data"
+                  ? "This will request removal of your personal data only, keeping your account active."
+                  : "This will request full deletion of your account and all associated data."}
+                {" "}Optionally add a note below.
+              </p>
+              <Textarea
+                placeholder="Optional: add any details or context..."
+                value={requestMessage}
+                onChange={(e) => setRequestMessage(e.target.value)}
+                className="mt-2 text-sm"
+                rows={3}
+              />
+            </>
+          )}
+          <DialogFooter className="gap-2 mt-2">
+            <Button variant="ghost" onClick={() => setRequestType(null)}>
+              {requestSent ? "Close" : "Cancel"}
+            </Button>
+            {!requestSent && (
+              <Button
+                disabled={requestSending}
+                onClick={async () => {
+                  setRequestSending(true);
+                  const user = await base44.auth.me();
+                  const subject = requestType === "data"
+                    ? "[DATA DELETION REQUEST] Curio"
+                    : "[FULL ACCOUNT DELETION REQUEST] Curio";
+                  const body = `Request type: ${requestType === "data" ? "Data Deletion Only" : "Full Account Deletion"}\nUser email: ${user?.email || "unknown"}\nUser name: ${user?.full_name || "unknown"}\n\nUser message:\n${requestMessage || "(none)"}`;
+                  await base44.integrations.Core.SendEmail({ to: "mediocreatbestdev@outlook.com", subject, body });
+                  setRequestSending(false);
+                  setRequestSent(true);
+                }}
+              >
+                <Send className="w-4 h-4" />
+                {requestSending ? "Sending…" : "Send request"}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete confirmation dialog */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
