@@ -15,7 +15,6 @@ import CollectionFormDialog from "@/components/CollectionFormDialog";
 import ShareDialog from "@/components/ShareDialog";
 import BulkAddDialog from "@/components/BulkAddDialog";
 import EmptyState from "@/components/EmptyState";
-import VideoAdModal from "@/components/VideoAdModal";
 import { showInterstitialAd } from "@/lib/admob";
 
 import { toast } from "sonner";
@@ -46,7 +45,6 @@ export default function CollectionDetail() {
   const [showEditCollection, setShowEditCollection] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showBulkAdd, setShowBulkAdd] = useState(false);
-  const [showVideoAd, setShowVideoAd] = useState(false);
   const [collectionData, setCollectionData] = useState(null);
 
   const { data: collection, isLoading: loadingCol } = useQuery({
@@ -320,8 +318,7 @@ export default function CollectionDetail() {
         onOpenChange={setShowAddItem}
         onSubmit={async (data) => {
           await createItem.mutateAsync(data);
-          const adShown = await showInterstitialAd();
-          if (!adShown) setShowVideoAd(true); // fallback for web preview
+          await showInterstitialAd();
         }}
         collectionType={activeCollection.type}
       />
@@ -344,11 +341,9 @@ export default function CollectionDetail() {
         collectionType={activeCollection.type}
         onSuccess={async () => {
           qc.invalidateQueries({ queryKey: ["items", id] });
-          const adShown = await showInterstitialAd();
-          if (!adShown) setShowVideoAd(true);
+          await showInterstitialAd();
         }}
       />
-      <VideoAdModal open={showVideoAd} onClose={() => setShowVideoAd(false)} />
     </div>
   );
 }
