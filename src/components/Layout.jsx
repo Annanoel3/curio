@@ -87,21 +87,21 @@ export default function Layout() {
         </div>
       </header>
 
-      <main className="pb-28">
+      <main className="pb-28 md:pb-0">
         <Outlet />
       </main>
 
-      <footer className="border-t border-border/60 mt-24">
+      <footer className="hidden md:block border-t border-border/60 mt-24">
         <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8 text-xs text-muted-foreground flex items-center justify-between">
           <span>Curio · Your collection, curated.</span>
           <span className="font-serif italic">est. 2026</span>
         </div>
       </footer>
 
-      {/* Bottom nav */}
+      {/* Mobile bottom nav */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/60 flex"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 30px)" }}
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/60 flex"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         {navItems.map(({ to, icon: Icon, label }) => {
           const active = location.pathname === to;
