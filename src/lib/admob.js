@@ -1,25 +1,26 @@
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import { AdMob } from '@capacitor-community/admob';
+import { Capacitor } from '@capacitor/core';
 
 const AD_UNIT_ID = 'ca-app-pub-7979856440890193/9179846434';
 const SHOW_EVERY_N_OPENS = 3;  // Show ad every 3rd app open
 const AD_DELAY_MS = 15000;     // Wait 15 seconds before showing
 
-let AdMob = null;
+let adMobInitialized = false;
 
 export async function initAdMob() {
   if (!Capacitor.isNativePlatform()) return;
   try {
-    AdMob = registerPlugin('AdMob');
     await AdMob.initialize({ initializeForTesting: false });
+    adMobInitialized = true;
     console.log('[AdMob] initialized');
   } catch (e) {
     console.warn('[AdMob] init failed:', e);
-    AdMob = null;
+    adMobInitialized = false;
   }
 }
 
 export async function showInterstitialAd() {
-  if (!AdMob) return false;
+  if (!adMobInitialized) return false;
   try {
     await AdMob.prepareInterstitial({ adId: AD_UNIT_ID, isTesting: false });
     await AdMob.showInterstitial();
