@@ -126,6 +126,19 @@ export default function CollectionDetail() {
     onSettled: () => qc.invalidateQueries({ queryKey: ["items", id] }),
   });
 
+  const markForSale = useMutation({
+    mutationFn: (itemId) => base44.entities.Item.update(itemId, { status: "for_sale" }),
+    onMutate: async (itemId) => {
+      await qc.cancelQueries({ queryKey: ["items", id] });
+      const prev = qc.getQueryData(["items", id]);
+      qc.setQueryData(["items", id], (old = []) => old.map((i) => i.id === itemId ? { ...i, status: "for_sale" } : i));
+      return { prev };
+    },
+    onError: (_, __, ctx) => qc.setQueryData(["items", id], ctx.prev),
+    onSuccess: () => toast.success("Marked as for sale"),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["items", id] }),
+  });
+
   const allTags = useMemo(() => {
     const set = new Set();
     items.forEach((item) => item.tags?.forEach((t) => set.add(t)));
@@ -276,6 +289,11 @@ export default function CollectionDetail() {
                   Sold
                 </div>
               )}
+              {item.status === "for_sale" && (
+                <div className="absolute top-2 left-2 text-[10px] font-medium bg-accent text-accent-foreground px-2 py-0.5 rounded-full pointer-events-none">
+                  For Sale
+                </div>
+              )}
               {item.quantity > 1 && (
                 <div className="absolute top-2 right-2 text-[10px] font-medium bg-foreground/80 text-background px-2 py-0.5 rounded-full pointer-events-none">
                   ×{item.quantity}
@@ -288,10 +306,25 @@ export default function CollectionDetail() {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {item.status !== "sold" && (
-                    <DropdownMenuItem onClick={() => markSold.mutate(item.id)} className="gap-2">
-                      <DollarSign className="w-3.5 h-3.5" /> Mark as sold
-                    </DropdownMenuItem>
+                  {item.status === "owned" && (
+                    <>
+                      <DropdownMenuItem onClick={() => markForSale.mutate(item.id)} className="gap-2">
+                        <DollarSign className="w-3.5 h-3.5" /> Mark as for sale
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => markSold.mutate(item.id)} className="gap-2">
+                        <DollarSign className="w-3.5 h-3.5" /> Mark as sold
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {item.status === "for_sale" && (
+                    <>
+                      <DropdownMenuItem onClick={() => markOwned.mutate(item.id)} className="gap-2">
+                        <DollarSign className="w-3.5 h-3.5" /> Mark as owned
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => markSold.mutate(item.id)} className="gap-2">
+                        <DollarSign className="w-3.5 h-3.5" /> Mark as sold
+                      </DropdownMenuItem>
+                    </>
                   )}
                   {item.status === "sold" && (
                     <DropdownMenuItem onClick={() => markOwned.mutate(item.id)} className="gap-2">

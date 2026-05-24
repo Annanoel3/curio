@@ -57,10 +57,11 @@
       "type": "string",
       "enum": [
         "owned",
+        "for_sale",
         "sold"
       ],
       "default": "owned",
-      "description": "Whether the item is still owned or has been sold"
+      "description": "Whether the item is owned, for sale, or has been sold"
     },
     "attributes": {
       "type": "object",

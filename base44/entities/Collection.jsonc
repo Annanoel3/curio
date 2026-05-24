@@ -26,6 +26,21 @@
     "share_token": {
       "type": "string",
       "description": "Random token used in public share URL"
+    },
+    "share_show_status": {
+      "type": "boolean",
+      "default": true,
+      "description": "Show item status (owned/for sale/sold) on public share page"
+    },
+    "share_show_value": {
+      "type": "boolean",
+      "default": true,
+      "description": "Show estimated value on public share page"
+    },
+    "share_show_notes": {
+      "type": "boolean",
+      "default": false,
+      "description": "Show item notes on public share page"
     }
   },
   "required": [

@@ -10,7 +10,19 @@ const fmt = (n) =>
     ? `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
     : null;
 
-function PublicItemCard({ item, index }) {
+const STATUS_LABELS = {
+  owned: "Owned",
+  for_sale: "For Sale",
+  sold: "Sold",
+};
+
+const STATUS_STYLES = {
+  owned: "bg-secondary text-secondary-foreground",
+  for_sale: "bg-accent text-accent-foreground",
+  sold: "bg-foreground/80 text-background",
+};
+
+function PublicItemCard({ item, showValue, showStatus, showNotes }) {
   const val = fmt(item.estimated_value) ||
     (item.value_low && item.value_high
       ? `${fmt(item.value_low)}–${fmt(item.value_high)}`
@@ -20,7 +32,6 @@ function PublicItemCard({ item, index }) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04 }}
       className="rounded-xl overflow-hidden bg-card border border-border/60"
     >
       <div className="aspect-square bg-secondary relative overflow-hidden">
@@ -31,14 +42,22 @@ function PublicItemCard({ item, index }) {
             <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
           </div>
         )}
-        {val && (
+        {showValue && val && (
           <div className="absolute bottom-2 left-2 text-[11px] font-medium bg-foreground text-background px-2 py-0.5 rounded-full">
             {val}
+          </div>
+        )}
+        {showStatus && item.status && item.status !== "owned" && (
+          <div className={`absolute top-2 left-2 text-[10px] font-medium px-2 py-0.5 rounded-full ${STATUS_STYLES[item.status] || "bg-secondary text-secondary-foreground"}`}>
+            {STATUS_LABELS[item.status] || item.status}
           </div>
         )}
       </div>
       <div className="p-3.5">
         <h4 className="font-medium text-sm line-clamp-1">{item.title}</h4>
+        {showNotes && item.notes && (
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.notes}</p>
+        )}
         {item.tags?.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1.5">
             {item.tags.slice(0, 3).map((t) => (
@@ -95,11 +114,14 @@ export default function PublicCollection() {
     );
   }
 
-  const totalValue = items.reduce((sum, i) => sum + (i.estimated_value || 0), 0);
+  const showValue = collection.share_show_value !== false;
+  const showStatus = collection.share_show_status !== false;
+  const showNotes = collection.share_show_notes === true;
+
+  const totalValue = showValue ? items.reduce((sum, i) => sum + (i.estimated_value || 0), 0) : 0;
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Cover */}
       {collection.cover_image_url && (
         <div className="h-56 sm:h-72 overflow-hidden">
           <img src={collection.cover_image_url} alt={collection.name} className="w-full h-full object-cover" />
@@ -126,7 +148,14 @@ export default function PublicCollection() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {items.map((item, i) => (
-              <PublicItemCard key={item.id} item={item} index={i} />
+              <PublicItemCard
+                key={item.id}
+                item={item}
+                index={i}
+                showValue={showValue}
+                showStatus={showStatus}
+                showNotes={showNotes}
+              />
             ))}
           </div>
         )}
