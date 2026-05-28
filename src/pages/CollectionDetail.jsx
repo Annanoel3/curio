@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { Plus, ChevronLeft, Share2, Pencil, Trash2, ImageIcon, DollarSign, FileUp, RotateCcw } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import { toast } from "sonner";
 
 export default function CollectionDetail() {
   const { id } = useParams();
+  const { user } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [activeTag, setActiveTag] = useState(null);
@@ -48,13 +50,14 @@ export default function CollectionDetail() {
   const [collectionData, setCollectionData] = useState(null);
 
   const { data: collection, isLoading: loadingCol } = useQuery({
-    queryKey: ["collection", id],
+    queryKey: ["collection", id, user?.id],
     queryFn: async () => {
-      const res = await base44.entities.Collection.filter({ id });
+      const res = await base44.entities.Collection.filter({ id, created_by_id: user?.id });
       return res[0] || null;
     },
     placeholderData: (prev) => prev,
     onSuccess: (d) => setCollectionData(d),
+    enabled: !!user?.id,
   });
 
   const activeCollection = collectionData || collection;

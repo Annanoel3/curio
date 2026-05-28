@@ -8,9 +8,11 @@ import CollectionCard from "@/components/CollectionCard";
 import CollectionFormDialog from "@/components/CollectionFormDialog";
 import EmptyState from "@/components/EmptyState";
 import SortSelect from "@/components/SortSelect";
+import { useAuth } from "@/lib/AuthContext";
 
 
 export default function Home() {
+  const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [collectionSort, setCollectionSort] = useState(
     () => localStorage.getItem("curio-collection-sort") || "updated"
@@ -31,8 +33,9 @@ export default function Home() {
   const qc = useQueryClient();
 
   const { data: collections = [], isLoading, refetch: refetchCollections } = useQuery({
-    queryKey: ["collections"],
-    queryFn: () => base44.entities.Collection.list("-updated_date"),
+    queryKey: ["collections", user?.id],
+    queryFn: () => base44.entities.Collection.filter({ created_by_id: user?.id }, "-updated_date"),
+    enabled: !!user?.id,
   });
 
   const { data: allItems = [], refetch: refetchItems } = useQuery({
