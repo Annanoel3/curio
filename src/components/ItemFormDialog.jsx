@@ -345,7 +345,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
   };
 
   return (
-    <Dialog open={open} onOpenChange={(val) => { if (val === false && phase !== null) return; onOpenChange(val); }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="font-serif text-2xl">
@@ -476,7 +476,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
             )}
 
             {/* Phase: Correct identified item */}
-            {phase === 'questions' && !needsManualTitle && questions.length > 0 && identifiedItem && !correctedTitle && (
+            {phase === 'questions' && !needsManualTitle && questions.length > 0 && identifiedItem && (
               <div className="mt-3 p-3 rounded-xl border border-accent/40 bg-accent/5 shadow-sm space-y-3">
                 <p className="text-xs font-medium text-foreground text-center">Is the item name correct?</p>
                 <p className="text-[11px] text-muted-foreground text-center italic">"{identifiedItem}"</p>
