@@ -274,13 +274,17 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       }));
       
       // Generate reseller links
-      const searchTerm = encodeURIComponent(a.title || identifiedItem || data.title);
+      const searchTerm = encodeURIComponent(a.title || itemToAppraise || data.title);
       setRessellerLinks([
         { name: 'The RealReal', url: `https://www.therealreal.com/shop/all?q=${searchTerm}` },
         { name: 'Poshmark', url: `https://poshmark.com/search?query=${searchTerm}` },
         { name: 'Mercari', url: `https://www.mercari.com/search?keyword=${searchTerm}` },
         { name: 'eBay', url: `https://www.ebay.com/sch/i.html?_nkw=${searchTerm}` },
       ]);
+      
+      // Update identified item and clear correction
+      setIdentifiedItem(itemToAppraise);
+      setCorrectedTitle("");
       
       toast.success("AI appraisal complete");
     } catch (e) {
