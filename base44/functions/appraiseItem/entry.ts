@@ -69,6 +69,7 @@ Deno.serve(async (req) => {
       prompt,
       response_json_schema: schema,
       model: 'gemini_3_flash',
+      add_context_from_internet: true,  // Search the web for current prices
     };
     if (allImageUrls.length && !identified_item) {
       invokePayload.file_urls = allImageUrls;
