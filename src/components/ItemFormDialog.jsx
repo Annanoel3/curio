@@ -475,8 +475,8 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               </div>
             )}
 
-            {/* Phase: Correct identified item — ONLY show this, not the questions below */}
-            {phase === 'questions' && !needsManualTitle && questions.length > 0 && identifiedItem && !Object.keys(answers).some(k => answers[k]) && (
+            {/* Phase: Correct identified item */}
+            {phase === 'questions' && !needsManualTitle && questions.length > 0 && identifiedItem && !correctedTitle && (
               <div className="mt-3 p-3 rounded-xl border border-accent/40 bg-accent/5 shadow-sm space-y-3">
                 <p className="text-xs font-medium text-foreground text-center">Is the item name correct?</p>
                 <p className="text-[11px] text-muted-foreground text-center italic">"{identifiedItem}"</p>
@@ -500,8 +500,8 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               </div>
             )}
 
-            {/* Phase: Item-specific questions — ONLY show after user confirms item name */}
-            {phase === 'questions' && !needsManualTitle && questions.length > 0 && Object.keys(answers).some(k => answers[k]) && (
+            {/* Phase: Item-specific questions */}
+            {phase === 'questions' && !needsManualTitle && questions.length > 0 && correctedTitle && (
               <div className="mt-3 p-3 rounded-xl border border-border bg-card shadow-sm space-y-3">
                 {identifiedItem && (
                   <p className="text-[11px] text-muted-foreground text-center italic">"{identifiedItem}"</p>
