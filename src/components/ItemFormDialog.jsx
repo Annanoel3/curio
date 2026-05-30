@@ -67,6 +67,8 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
   const [uploadingExtra, setUploadingExtra] = useState(false);
   const [customSizeInput, setCustomSizeInput] = useState({});  // { [questionId]: string }
   const [userNotes, setUserNotes] = useState("");
+  const [correctedTitle, setCorrectedTitle] = useState("");
+  const [resellerLinks, setRessellerLinks] = useState([]);
 
   const appraising = phase === 'appraising';
 
@@ -97,6 +99,8 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       setExtraIdentifyImages([]);
       setCustomSizeInput({});
       setUserNotes("");
+      setCorrectedTitle("");
+      setRessellerLinks([]);
     }
   }, [open, initial]);
 
@@ -224,9 +228,60 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
         value_high: a.value_high ?? null,
         ai_appraisal_notes: a.appraisal_reasoning || "",
       }));
+      
+      // Generate reseller links
+      const searchTerm = encodeURIComponent(a.title || identifiedItem || data.title);
+      setRessellerLinks([
+        { name: 'The RealReal', url: `https://www.therealreal.com/search?search=${searchTerm}` },
+        { name: 'Poshmark', url: `https://poshmark.com/search?query=${searchTerm}` },
+        { name: 'Mercari', url: `https://www.mercari.com/search?keyword=${searchTerm}` },
+        { name: 'eBay', url: `https://www.ebay.com/sch/i.html?_nkw=${searchTerm}` },
+      ]);
+      
       toast.success("AI appraisal complete");
     } catch (e) {
       toast.error("Appraisal failed — please try again");
+    } finally {
+      setPhase(null);
+    }
+  };
+
+  const handleCorrectItem = async () => {
+    if (!correctedTitle.trim()) return;
+    setPhase('appraising');
+    try {
+      const a = await runAppraise({
+        phase: 'appraise',
+        text_query: correctedTitle.trim(),
+        collection_type: collectionType,
+        condition_answers: [],
+        identified_item: correctedTitle.trim(),
+      });
+      setData((prev) => ({
+        ...prev,
+        title: a.title || correctedTitle.trim(),
+        notes: prev.notes || a.notes || "",
+        tags: prev.tags?.length ? prev.tags : (a.tags || []),
+        estimated_value: a.estimated_value ?? prev.estimated_value,
+        value_low: a.value_low ?? null,
+        value_high: a.value_high ?? null,
+        ai_appraisal_notes: a.appraisal_reasoning || "",
+      }));
+      setIdentifiedItem(correctedTitle.trim());
+      setCorrectedTitle("");
+      
+      // Generate reseller links
+      const searchTerm = encodeURIComponent(a.title || correctedTitle.trim());
+      setRessellerLinks([
+        { name: 'The RealReal', url: `https://www.therealreal.com/search?search=${searchTerm}` },
+        { name: 'Poshmark', url: `https://poshmark.com/search?query=${searchTerm}` },
+        { name: 'Mercari', url: `https://www.mercari.com/search?keyword=${searchTerm}` },
+        { name: 'eBay', url: `https://www.ebay.com/sch/i.html?_nkw=${searchTerm}` },
+      ]);
+      
+      toast.success("Updated appraisal with correct item");
+    } catch (e) {
+      toast.error("Re-appraisal failed");
     } finally {
       setPhase(null);
     }
@@ -378,10 +433,35 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               </div>
             )}
 
+            {/* Phase: Correct identified item */}
+            {phase === 'questions' && !needsManualTitle && questions.length > 0 && identifiedItem && (
+              <div className="mt-3 p-3 rounded-xl border border-accent/40 bg-accent/5 shadow-sm space-y-3">
+                <p className="text-xs font-medium text-foreground text-center">Is the item name correct?</p>
+                <p className="text-[11px] text-muted-foreground text-center italic">"{identifiedItem}"</p>
+                <div className="flex gap-2">
+                  <Input
+                    value={correctedTitle}
+                    onChange={(e) => setCorrectedTitle(e.target.value)}
+                    placeholder="Correct item name (e.g. Louis Vuitton Graceful MM 2019)…"
+                    className="text-xs h-8"
+                    onKeyDown={(e) => e.key === 'Enter' && handleCorrectItem()}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCorrectItem}
+                    disabled={!correctedTitle.trim() || phase === 'appraising'}
+                    className="px-3 py-2 rounded-md bg-accent text-accent-foreground text-xs font-medium hover:opacity-90 disabled:opacity-50 transition"
+                  >
+                    ✓
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Phase: Item-specific questions */}
             {phase === 'questions' && !needsManualTitle && questions.length > 0 && (
               <div className="mt-3 p-3 rounded-xl border border-border bg-card shadow-sm space-y-3">
-                {identifiedItem && (
+                {identifiedItem && !correctedTitle && (
                   <p className="text-[11px] text-muted-foreground text-center italic">"{identifiedItem}"</p>
                 )}
                 {questions.map((q) => (
@@ -534,6 +614,25 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
                   <Sparkles className="w-3 h-3 text-accent" /> AI reasoning
                 </span>
                 {data.ai_appraisal_notes}
+              </div>
+            )}
+
+            {resellerLinks.length > 0 && (
+              <div className="p-3 rounded-lg bg-secondary/40 text-xs space-y-2">
+                <p className="font-medium text-foreground mb-2">Compare prices:</p>
+                <div className="flex flex-wrap gap-2">
+                  {resellerLinks.map((link) => (
+                    <a
+                      key={link.name}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-md border border-border hover:border-accent hover:bg-accent/10 transition text-muted-foreground hover:text-foreground"
+                    >
+                      {link.name} ↗
+                    </a>
+                  ))}
+                </div>
               </div>
             )}
           </div>

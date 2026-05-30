@@ -31,17 +31,19 @@ Deno.serve(async (req) => {
       : '';
 
     const prompt = allImageUrls.length
-      ? `${contextLine} ${identifiedLine} ${conditionLine} ${answersLine} ${multiImageNote}
-You are a collectibles appraiser. Based on your training knowledge of collector markets:
-1. Identify the exact item, variant, year, and packaging from the image.
-2. Estimate what this item sells for based on your knowledge of typical sold prices on eBay and Mercari for similar items in similar condition.
-3. Provide: estimated_value (typical sold price), value_low (low end), value_high (high end), title, 3-6 lowercase tags, brief notes under 80 words, and a short appraisal_reasoning explaining your estimate.
-4. Condition: ${condition || 'assess from image'}.`
-      : `${contextLine} ${identifiedLine} ${conditionLine} ${answersLine}
-You are a collectibles appraiser. For the item: "${text_query || identified_item}":
-1. Estimate what this item sells for based on your knowledge of typical sold prices on eBay and Mercari.
-2. Provide: estimated_value (typical sold price), value_low (low end), value_high (high end), title, 3-6 lowercase tags, brief notes under 80 words, and a short appraisal_reasoning.
-3. Condition: ${condition || 'not specified'}.`;
+       ? `${contextLine} ${identifiedLine} ${conditionLine} ${answersLine} ${multiImageNote}
+    You are a collectibles appraiser. Based on your training knowledge of collector markets:
+    1. Identify the exact item, variant, year, and packaging from the image.
+    2. Research typical sold prices for this exact item. For luxury goods, check The RealReal, Poshmark, and Mercari. For sneakers/collectibles, also check StockX and eBay sold listings. For other items, check eBay and Mercari.
+    3. Calculate value_low, value_high, and estimated_value as the AVERAGE of recent sold prices (not as a range, but the actual mid-point from multiple recent sales).
+    4. Provide: estimated_value (typical sold price), value_low (low end), value_high (high end), title, 3-6 lowercase tags, brief notes under 80 words, and a short appraisal_reasoning explaining your estimate.
+    5. Condition: ${condition || 'assess from image'}.`
+       : `${contextLine} ${identifiedLine} ${conditionLine} ${answersLine}
+    You are a collectibles appraiser. For the item: "${text_query || identified_item}":
+    1. Research typical sold prices. For luxury goods, check The RealReal, Poshmark, and Mercari. For sneakers/collectibles, also check StockX and eBay. For other items, check eBay and Mercari.
+    2. Calculate value_low, value_high, and estimated_value as the AVERAGE of recent sold prices from multiple sources.
+    3. Provide: estimated_value (typical sold price), value_low (low end), value_high (high end), title, 3-6 lowercase tags, brief notes under 80 words, and a short appraisal_reasoning.
+    4. Condition: ${condition || 'not specified'}.`;
 
     const schema = {
       type: 'object',
