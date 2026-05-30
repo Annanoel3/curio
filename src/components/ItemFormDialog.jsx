@@ -251,12 +251,14 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
 
     setPhase('appraising');
     try {
+      // Use corrected title if user typed one, otherwise use identified item
+      const itemToAppraise = correctedTitle.trim() || identifiedItem;
       const a = await runAppraise({
         phase: 'appraise',
-        text_query: !identifiedItem ? data.title : undefined,
+        text_query: !itemToAppraise ? data.title : undefined,
         collection_type: collectionType,
         condition_answers: conditionAnswers,
-        identified_item: identifiedItem,
+        identified_item: itemToAppraise,
         known_size: hadOtherSize ? customSizeInput[sizeQ.id].trim() : undefined,
         user_notes: userNotes.trim() || undefined,
       });
