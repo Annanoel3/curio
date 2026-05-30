@@ -103,39 +103,6 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
   }, [open, initial]);
 
   const handleAppraisalClick = async () => {
-    // If user has corrected the item name, use that directly
-    if (correctedTitle.trim()) {
-      setPhase('appraising');
-      try {
-        const a = await runAppraise({
-          phase: 'appraise',
-          text_query: correctedTitle.trim(),
-          collection_type: collectionType,
-          condition_answers: [],
-          identified_item: correctedTitle.trim(),
-        });
-        setData((prev) => ({
-          ...prev,
-          title: a.title || correctedTitle.trim(),
-          notes: prev.notes || a.notes || "",
-          tags: prev.tags?.length ? prev.tags : (a.tags || []),
-          estimated_value: a.estimated_value ?? prev.estimated_value,
-          value_low: a.value_low ?? null,
-          value_high: a.value_high ?? null,
-          ai_appraisal_notes: a.appraisal_reasoning || "",
-        }));
-        setIdentifiedItem(correctedTitle.trim());
-        setCorrectedTitle("");
-        
-        toast.success("Updated appraisal with correct item");
-      } catch (e) {
-        toast.error("Re-appraisal failed");
-      } finally {
-        setPhase(null);
-      }
-      return;
-    }
-
     const allImages = [data.image_url, ...extraIdentifyImages].filter(Boolean);
     if (!allImages.length && !data.title.trim()) {
       toast.error("Add a photo or title first");
@@ -159,14 +126,15 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
         setAnswers({});
         setManualTitle("");
         setNeedsManualTitle(true);
-        setPhase('questions');
+        setPhase('verify');
         return;
       }
 
       setIdentifiedItem(result?.identified_item || "");
       setQuestions(result?.questions || []);
       setAnswers({});
-      setPhase('questions');
+      setCorrectedTitle("");
+      setPhase('verify');
     } catch (e) {
       toast.error("Identification failed — please try again");
       setPhase(null);
@@ -275,35 +243,10 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
   };
 
   const handleCorrectItem = async () => {
-    if (!correctedTitle.trim()) return;
-    setPhase('appraising');
-    try {
-      const a = await runAppraise({
-        phase: 'appraise',
-        text_query: correctedTitle.trim(),
-        collection_type: collectionType,
-        condition_answers: [],
-        identified_item: correctedTitle.trim(),
-      });
-      setData((prev) => ({
-        ...prev,
-        title: a.title || correctedTitle.trim(),
-        notes: prev.notes || a.notes || "",
-        tags: prev.tags?.length ? prev.tags : (a.tags || []),
-        estimated_value: a.estimated_value ?? prev.estimated_value,
-        value_low: a.value_low ?? null,
-        value_high: a.value_high ?? null,
-        ai_appraisal_notes: a.appraisal_reasoning || "",
-      }));
-      setIdentifiedItem(correctedTitle.trim());
-      setCorrectedTitle("");
-
-      toast.success("Updated appraisal with correct item");
-    } catch (e) {
-      toast.error("Re-appraisal failed");
-    } finally {
-      setPhase(null);
-    }
+    const finalItem = correctedTitle.trim() || identifiedItem;
+    if (!finalItem) return;
+    setPhase('questions');
+    setCorrectedTitle("");
   };
 
   const handleSubmit = async () => {
@@ -423,62 +366,62 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
             )}
 
             {/* Phase: Needs manual title — AI couldn't identify */}
-            {phase === 'questions' && needsManualTitle && (
-              <div className="mt-3 p-3 rounded-xl border border-accent/40 bg-accent/5 shadow-sm space-y-3">
-                <p className="text-xs font-medium text-foreground text-center">Help us identify this item</p>
-                <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
-                  We couldn't identify this automatically. What is it?
-                </p>
-                <Input
-                  value={manualTitle}
-                  onChange={(e) => setManualTitle(e.target.value)}
-                  placeholder="e.g. 1967 Hot Wheels Redline…"
-                  className="text-xs h-8"
-                  onKeyDown={(e) => e.key === 'Enter' && handleManualTitleSubmit()}
-                  autoFocus
-                />
-                <p className="text-[9px] text-muted-foreground leading-relaxed">
-                  What's the brand? The model or series name? The year or edition? Any of these help.
-                </p>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleManualTitleSubmit}
-                  disabled={!manualTitle.trim()}
-                  className="w-full gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5" /> Continue with Appraisal
-                </Button>
-              </div>
-            )}
+             {phase === 'verify' && needsManualTitle && (
+               <div className="mt-3 p-3 rounded-xl border border-accent/40 bg-accent/5 shadow-sm space-y-3">
+                 <p className="text-xs font-medium text-foreground text-center">Help us identify this item</p>
+                 <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
+                   We couldn't identify this automatically. What is it?
+                 </p>
+                 <Input
+                   value={manualTitle}
+                   onChange={(e) => setManualTitle(e.target.value)}
+                   placeholder="e.g. 1967 Hot Wheels Redline…"
+                   className="text-xs h-8"
+                   onKeyDown={(e) => e.key === 'Enter' && handleManualTitleSubmit()}
+                   autoFocus
+                 />
+                 <p className="text-[9px] text-muted-foreground leading-relaxed">
+                   What's the brand? The model or series name? The year or edition? Any of these help.
+                 </p>
+                 <Button
+                   type="button"
+                   size="sm"
+                   onClick={handleManualTitleSubmit}
+                   disabled={!manualTitle.trim()}
+                   className="w-full gap-1.5"
+                 >
+                   <Sparkles className="w-3.5 h-3.5" /> Continue with Appraisal
+                 </Button>
+               </div>
+             )}
 
-            {/* Phase: Correct identified item */}
-            {phase === 'questions' && !needsManualTitle && questions.length > 0 && identifiedItem && (
-              <div className="mt-3 p-3 rounded-xl border border-accent/40 bg-accent/5 shadow-sm space-y-3">
-                <p className="text-xs font-medium text-foreground text-center">Is the item name correct?</p>
-                <p className="text-[11px] text-muted-foreground text-center italic">"{identifiedItem}"</p>
-                <div className="flex gap-2">
-                  <Input
-                    value={correctedTitle}
-                    onChange={(e) => setCorrectedTitle(e.target.value)}
-                    placeholder="Correct item name (e.g. Louis Vuitton Graceful MM 2019)…"
-                    className="text-xs h-8"
-                    onKeyDown={(e) => e.key === 'Enter' && handleCorrectItem()}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCorrectItem}
-                    disabled={!correctedTitle.trim() || phase === 'appraising'}
-                    className="px-3 py-2 rounded-md bg-accent text-accent-foreground text-xs font-medium hover:opacity-90 disabled:opacity-50 transition"
-                  >
-                    ✓
-                  </button>
-                </div>
-              </div>
-            )}
+             {/* Phase: Verify identified item name */}
+             {phase === 'verify' && !needsManualTitle && identifiedItem && (
+               <div className="mt-3 p-3 rounded-xl border border-accent/40 bg-accent/5 shadow-sm space-y-3">
+                 <p className="text-xs font-medium text-foreground text-center">Is the item name correct?</p>
+                 <p className="text-[11px] text-muted-foreground text-center italic">"{identifiedItem}"</p>
+                 <div className="flex gap-2">
+                   <Input
+                     value={correctedTitle}
+                     onChange={(e) => setCorrectedTitle(e.target.value)}
+                     placeholder="Correct item name (optional)…"
+                     className="text-xs h-8"
+                     onKeyDown={(e) => e.key === 'Enter' && handleCorrectItem()}
+                   />
+                   <button
+                     type="button"
+                     onClick={handleCorrectItem}
+                     disabled={phase === 'appraising'}
+                     className="px-3 py-2 rounded-md bg-accent text-accent-foreground text-xs font-medium hover:opacity-90 disabled:opacity-50 transition"
+                   >
+                     ✓
+                   </button>
+                 </div>
+               </div>
+             )}
 
-            {/* Phase: Item-specific questions */}
-            {phase === 'questions' && !needsManualTitle && questions.length > 0 && correctedTitle && (
+             {/* Phase: Item-specific questions */}
+             {phase === 'questions' && !needsManualTitle && questions.length > 0 && (
               <div className="mt-3 p-3 rounded-xl border border-border bg-card shadow-sm space-y-3">
                 {identifiedItem && (
                   <p className="text-[11px] text-muted-foreground text-center italic">"{identifiedItem}"</p>
