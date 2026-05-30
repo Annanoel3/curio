@@ -105,6 +105,48 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
   }, [open, initial]);
 
   const handleAppraisalClick = async () => {
+    // If user has corrected the item name, use that directly
+    if (correctedTitle.trim()) {
+      setPhase('appraising');
+      try {
+        const a = await runAppraise({
+          phase: 'appraise',
+          text_query: correctedTitle.trim(),
+          collection_type: collectionType,
+          condition_answers: [],
+          identified_item: correctedTitle.trim(),
+        });
+        setData((prev) => ({
+          ...prev,
+          title: a.title || correctedTitle.trim(),
+          notes: prev.notes || a.notes || "",
+          tags: prev.tags?.length ? prev.tags : (a.tags || []),
+          estimated_value: a.estimated_value ?? prev.estimated_value,
+          value_low: a.value_low ?? null,
+          value_high: a.value_high ?? null,
+          ai_appraisal_notes: a.appraisal_reasoning || "",
+        }));
+        setIdentifiedItem(correctedTitle.trim());
+        setCorrectedTitle("");
+        
+        // Generate reseller links
+        const searchTerm = encodeURIComponent(a.title || correctedTitle.trim());
+        setRessellerLinks([
+          { name: 'The RealReal', url: `https://www.therealreal.com/shop/all?q=${searchTerm}` },
+          { name: 'Poshmark', url: `https://poshmark.com/search?query=${searchTerm}` },
+          { name: 'Mercari', url: `https://www.mercari.com/search?keyword=${searchTerm}` },
+          { name: 'eBay', url: `https://www.ebay.com/sch/i.html?_nkw=${searchTerm}` },
+        ]);
+        
+        toast.success("Updated appraisal with correct item");
+      } catch (e) {
+        toast.error("Re-appraisal failed");
+      } finally {
+        setPhase(null);
+      }
+      return;
+    }
+
     const allImages = [data.image_url, ...extraIdentifyImages].filter(Boolean);
     if (!allImages.length && !data.title.trim()) {
       toast.error("Add a photo or title first");
@@ -433,8 +475,8 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               </div>
             )}
 
-            {/* Phase: Correct identified item */}
-            {phase === 'questions' && !needsManualTitle && questions.length > 0 && identifiedItem && (
+            {/* Phase: Correct identified item — ONLY show this, not the questions below */}
+            {phase === 'questions' && !needsManualTitle && questions.length > 0 && identifiedItem && !Object.keys(answers).some(k => answers[k]) && (
               <div className="mt-3 p-3 rounded-xl border border-accent/40 bg-accent/5 shadow-sm space-y-3">
                 <p className="text-xs font-medium text-foreground text-center">Is the item name correct?</p>
                 <p className="text-[11px] text-muted-foreground text-center italic">"{identifiedItem}"</p>
@@ -458,10 +500,10 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               </div>
             )}
 
-            {/* Phase: Item-specific questions */}
-            {phase === 'questions' && !needsManualTitle && questions.length > 0 && (
+            {/* Phase: Item-specific questions — ONLY show after user confirms item name */}
+            {phase === 'questions' && !needsManualTitle && questions.length > 0 && Object.keys(answers).some(k => answers[k]) && (
               <div className="mt-3 p-3 rounded-xl border border-border bg-card shadow-sm space-y-3">
-                {identifiedItem && !correctedTitle && (
+                {identifiedItem && (
                   <p className="text-[11px] text-muted-foreground text-center italic">"{identifiedItem}"</p>
                 )}
                 {questions.map((q) => (
