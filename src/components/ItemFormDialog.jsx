@@ -68,7 +68,6 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
   const [customSizeInput, setCustomSizeInput] = useState({});  // { [questionId]: string }
   const [userNotes, setUserNotes] = useState("");
   const [correctedTitle, setCorrectedTitle] = useState("");
-  const [resellerLinks, setRessellerLinks] = useState([]);
 
   const appraising = phase === 'appraising';
 
@@ -100,7 +99,6 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       setCustomSizeInput({});
       setUserNotes("");
       setCorrectedTitle("");
-      setRessellerLinks([]);
     }
   }, [open, initial]);
 
@@ -128,15 +126,6 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
         }));
         setIdentifiedItem(correctedTitle.trim());
         setCorrectedTitle("");
-        
-        // Generate reseller links
-        const searchTerm = encodeURIComponent(a.title || correctedTitle.trim());
-        setRessellerLinks([
-          { name: 'The RealReal', url: `https://www.therealreal.com/shop/all?q=${searchTerm}` },
-          { name: 'Poshmark', url: `https://poshmark.com/search?query=${searchTerm}` },
-          { name: 'Mercari', url: `https://www.mercari.com/search?keyword=${searchTerm}` },
-          { name: 'eBay', url: `https://www.ebay.com/sch/i.html?_nkw=${searchTerm}` },
-        ]);
         
         toast.success("Updated appraisal with correct item");
       } catch (e) {
@@ -273,15 +262,6 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
         ai_appraisal_notes: a.appraisal_reasoning || "",
       }));
       
-      // Generate reseller links
-      const searchTerm = encodeURIComponent(a.title || itemToAppraise || data.title);
-      setRessellerLinks([
-        { name: 'The RealReal', url: `https://www.therealreal.com/shop/all?q=${searchTerm}` },
-        { name: 'Poshmark', url: `https://poshmark.com/search?query=${searchTerm}` },
-        { name: 'Mercari', url: `https://www.mercari.com/search?keyword=${searchTerm}` },
-        { name: 'eBay', url: `https://www.ebay.com/sch/i.html?_nkw=${searchTerm}` },
-      ]);
-      
       // Update identified item and clear correction
       setIdentifiedItem(itemToAppraise);
       setCorrectedTitle("");
@@ -317,16 +297,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
       }));
       setIdentifiedItem(correctedTitle.trim());
       setCorrectedTitle("");
-      
-      // Generate reseller links
-      const searchTerm = encodeURIComponent(a.title || correctedTitle.trim());
-      setRessellerLinks([
-        { name: 'The RealReal', url: `https://www.therealreal.com/shop/all?q=${searchTerm}` },
-        { name: 'Poshmark', url: `https://poshmark.com/search?query=${searchTerm}` },
-        { name: 'Mercari', url: `https://www.mercari.com/search?keyword=${searchTerm}` },
-        { name: 'eBay', url: `https://www.ebay.com/sch/i.html?_nkw=${searchTerm}` },
-      ]);
-      
+
       toast.success("Updated appraisal with correct item");
     } catch (e) {
       toast.error("Re-appraisal failed");
@@ -665,24 +636,7 @@ export default function ItemFormDialog({ open, onOpenChange, onSubmit, initial, 
               </div>
             )}
 
-            {resellerLinks.length > 0 && (
-              <div className="p-3 rounded-lg bg-secondary/40 text-xs space-y-2">
-                <p className="font-medium text-foreground mb-2">Compare prices:</p>
-                <div className="flex flex-wrap gap-2">
-                  {resellerLinks.map((link) => (
-                    <a
-                      key={link.name}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1.5 rounded-md border border-border hover:border-accent hover:bg-accent/10 transition text-muted-foreground hover:text-foreground"
-                    >
-                      {link.name} ↗
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
+
           </div>
         </div>
 

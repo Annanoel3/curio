@@ -164,6 +164,8 @@ Give estimated_value (median eBay/Mercari sold price), value_low, value_high, ti
       const result = await base44.integrations.Core.InvokeLLM({
         prompt: appraisePrompt,
         response_json_schema: appraiseSchema,
+        add_context_from_internet: true,
+        model: 'gpt_5_4',
       });
 
       return Response.json({ appraisal: result });
