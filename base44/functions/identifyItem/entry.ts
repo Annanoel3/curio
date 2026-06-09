@@ -1,109 +1,68 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import OpenAI from 'npm:openai';
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const openai = new OpenAI({ apiKey: Deno.env.get('OPENAI_API_KEY') });
 
     const body = await req.json();
     const { image_url, image_urls, text_query, collection_type, known_size } = body;
 
-    // Support single or multiple images
     const allImageUrls = image_urls?.length ? image_urls : (image_url ? [image_url] : []);
-
     if (!allImageUrls.length && !text_query) {
       return Response.json({ error: 'Provide image_url(s) or text_query' }, { status: 400 });
     }
 
     const contextLine = collection_type ? `The user collects: ${collection_type}.` : '';
-    const knownSizeLine = known_size ? `CONFIRMED SIZE: The user has measured this item and confirmed it is ${known_size} tall. Use this exact size to identify the correct model/variant — do not guess or assume a different size.` : '';
-    const multiImageNote = allImageUrls.length > 1
-      ? `The user has provided ${allImageUrls.length} photos of the same item (e.g. front and back). Use all images together to identify it.`
-      : '';
+    const knownSizeLine = known_size ? `CONFIRMED SIZE: The user confirmed this item is ${known_size} tall. Use this exact size to identify the correct model/variant.` : '';
+    const multiImageNote = allImageUrls.length > 1 ? `The user provided ${allImageUrls.length} photos of the same item. Use all images together.` : '';
 
-    const prompt = allImageUrls.length
-      ? `${contextLine} ${knownSizeLine} ${multiImageNote}
-You are an expert collectibles identifier and appraiser with deep knowledge of art glass, ceramics, figurines, and collectibles.
+    const systemPrompt = `You are an expert collectibles identifier with deep knowledge of antiques, flatware, ceramics, die-cast, and collectibles.
+${contextLine} ${knownSizeLine} ${multiImageNote}
 
-Step 1 — MANDATORY PHYSICAL COUNT (do this before anything else):
-- If the item is a FORK: count every individual tine/prong one by one. State the count explicitly (e.g. "I count 5 tines"). A standard dinner fork has 4 tines. A 5-tine fork is a rare, distinct, collectible variant with significantly different value — DO NOT assume 4 tines without counting. If the text_query mentions "5 prong", "5 tine", or similar, treat this as confirmed ground truth.
-- If the item has other countable structural features (petals, legs, panels), count and note them.
+STEP 1 — MANDATORY PHYSICAL COUNT: Count every countable structural feature. State the exact count explicitly. A standard dinner fork has 4 tines; a 5-tine fork is a rare distinct variant — do NOT assume 4 unless you counted 4.
+STEP 2 — VISUAL ANALYSIS: Examine shape, silhouette, decoration, marks/signatures (read ALL text exactly), color, finish, unusual features.
+STEP 3 — IDENTIFY the EXACT model/variant. Include brand, exact model name, model number if known, year/series.
+STEP 4 — physical_format: one of "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "pottery/ceramics", "flatware/cutlery", "other".
+STEP 5 — Generate 2-4 condition questions that affect resale value. For items made in multiple sizes, ask height FIRST with known size options, always include "Other / I'll measure" as last option.
+Set confidence to "high" if certain of exact model, "low" if only brand/category is clear, "unknown" if unidentifiable.
 
-Step 2 — VISUAL ANALYSIS: Examine every visual detail:
-- Overall silhouette and shape (e.g. tapered, cylindrical, footed, goblet-shaped, handled)
-- Surface decoration: motifs, patterns, textures, frosted vs. clear areas
-- Base/foot style: flat, footed, sculptural elements
-- Any visible marks, signatures, or etching (read ALL text exactly as written)
-- Color and finish
-- Any physically unusual or non-standard features — flag these prominently
+Respond ONLY with valid JSON: {"identified_item":"string","physical_format":"string","confidence":"high|low|unknown","questions":[{"id":"string","question":"string","type":"yesno|choice","options":["string"]}]}`;
 
-Step 3 — IDENTIFY the EXACT model: Use your physical count and visual analysis to match the item. Do not default to the most-common version. If the tine count or shape is non-standard, that IS the identification — call it out. Include brand, exact model name, model number if known, and year/series.
-
-Step 4 — OUTPUT physical_format as one of: "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "comic book", "pottery/ceramics", "flatware/cutlery", "other".
-
-Step 5 — QUESTIONS: Generate 2-4 questions that affect resale value, in this order:
-a) SIZE FIRST (if this item was made in multiple sizes): Ask "What is the height of this piece?" with the known size options for that specific model as choices. ALWAYS include "Other / I'll measure" as the last option. Do NOT assume the size from the photo.
-b) Then condition questions relevant to the format.
-
-Set confidence to "high" if you are certain of the exact model, "low" if only the brand/category is clear, or "unknown" if unidentifiable.`
-      : `${contextLine} ${knownSizeLine}
-You are an expert collectibles identifier. The user described: "${text_query}".
-
-CRITICAL: If the description mentions "5 prong", "5 tine", "five prong", "five tine", or any non-standard physical count — treat this as confirmed ground truth. Identify the item AS that specific variant, not the standard version.
-
-Identify the EXACT item (brand, model name, model number, year/series) and its physical_format.
-
-Generate 2-4 questions that affect resale value:
-- If this item was made in multiple sizes, ask about height FIRST with known size options as choices. Always include "Other / I'll measure" as the last option.
-- Then ask condition questions relevant to the format.
-
-Set confidence to "high" if you are certain of the exact model, "low" if making a general guess, or "unknown" if you cannot identify it.`;
-
-    const schema = {
-      type: 'object',
-      properties: {
-        identified_item: { type: 'string' },
-        physical_format: { type: 'string' },
-        confidence: { type: 'string', enum: ['high', 'low', 'unknown'] },
-        questions: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              question: { type: 'string' },
-              type: { type: 'string', enum: ['yesno', 'choice'] },
-              options: { type: 'array', items: { type: 'string' } }
-            },
-            required: ['id', 'question', 'type']
-          }
-        }
-      },
-      required: ['identified_item', 'questions']
-    };
-
-    const invokePayload = {
-      prompt,
-      response_json_schema: schema,
-      model: 'gemini_3_flash',
-    };
+    let messages;
     if (allImageUrls.length) {
-      invokePayload.file_urls = allImageUrls;
+      messages = [{
+        role: 'user',
+        content: [
+          { type: 'text', text: systemPrompt },
+          ...allImageUrls.map(url => ({ type: 'image_url', image_url: { url, detail: 'high' } }))
+        ]
+      }];
+    } else {
+      messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Identify this item: "${text_query}"` }
+      ];
     }
 
-    const result = await base44.integrations.Core.InvokeLLM(invokePayload);
+    const res = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages,
+      response_format: { type: 'json_object' },
+    });
 
-    // Filter out trading-card-specific questions for die-cast items
+    const result = JSON.parse(res.choices?.[0]?.message?.content || '{}');
+
     const identified = result.identified_item || '';
     const format = (result.physical_format || '').toLowerCase();
     const TRADING_CARD_KEYWORDS = ['corner', 'centering', 'holo', 'surface scratch', 'print line', 'psa', 'bgs', 'grading', 'grade', 'edge wear'];
     const isDieCast = format.includes('blister') || format.includes('die-cast') || format.includes('diecast') ||
       identified.toLowerCase().includes('hot wheels') || identified.toLowerCase().includes('matchbox');
-    const isCard = format.includes('trading card') || identified.toLowerCase().includes('trading card') ||
-      identified.toLowerCase().includes('pokemon card');
+    const isCard = format.includes('trading card') || identified.toLowerCase().includes('pokemon card');
 
     let questions = result.questions || [];
     if (isDieCast && !isCard) {

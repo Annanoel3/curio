@@ -1,13 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import OpenAI from 'npm:openai';
 
-// Combined identify + appraise in a single function call to avoid frontend timeout issues
+// Identify phase only — uses gpt-4o (vision, no web search needed)
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const openai = new OpenAI({ apiKey: Deno.env.get('OPENAI_API_KEY') });
 
     const body = await req.json();
     const { image_urls, text_query, collection_type, condition_answers, known_size } = body;
@@ -18,62 +19,43 @@ Deno.serve(async (req) => {
     }
 
     const contextLine = collection_type ? `The user collects: ${collection_type}.` : '';
-    const knownSizeLine = known_size ? `CONFIRMED SIZE: The user confirmed this item is ${known_size} tall. Use this exact size to identify the correct model/variant.` : '';
+    const knownSizeLine = known_size ? `CONFIRMED SIZE: The user confirmed this item is ${known_size} tall.` : '';
     const answersLine = condition_answers?.length
       ? `Additional details confirmed by the user (treat as ground truth): ${condition_answers.map(a => `${a.question}: ${a.answer}`).join('; ')}.`
       : '';
-    const multiImageNote = allImageUrls.length > 1
-      ? `The user provided ${allImageUrls.length} photos of the same item. Use all images together.`
-      : '';
+    const multiImageNote = allImageUrls.length > 1 ? `The user provided ${allImageUrls.length} photos of the same item. Use all images together.` : '';
 
-    // Step 1: Identify the item and generate condition questions
-    const identifyPrompt = allImageUrls.length
-      ? `${contextLine} ${knownSizeLine} ${multiImageNote}
-You are an expert collectibles identifier. Examine the image(s) and:
-1. Identify the EXACT item (brand, model name, year/series, variant). Be specific.
-2. Determine the physical_format: one of "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "pottery/ceramics", "flatware/cutlery", "other".
-3. Generate 2-3 condition questions that affect resale value. For items made in multiple sizes, ask about height FIRST with known size options as choices, always include "Other / I'll measure" as last option.
-Set confidence to "high" if certain of exact model, "low" if only brand/category is clear.`
-      : `${contextLine} ${knownSizeLine}
-You are an expert collectibles identifier. The user described: "${text_query}".
-1. Identify the EXACT item (brand, model name, year/series, variant).
-2. Determine the physical_format.
-3. Generate 2-3 condition questions that affect resale value.
-Set confidence to "high" if certain, "low" if making a general guess.`;
+    const systemPrompt = `You are an expert collectibles identifier. ${contextLine} ${knownSizeLine} ${answersLine} ${multiImageNote}
+Identify the EXACT item (brand, model name, year/series, variant). Be specific.
+Determine physical_format: one of "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "pottery/ceramics", "flatware/cutlery", "other".
+Generate 2-3 condition questions that affect resale value. For items made in multiple sizes, ask height FIRST with known options, always include "Other / I'll measure" as last option.
+Set confidence to "high" if certain, "low" if only brand/category is clear.
+Respond ONLY with valid JSON: {"identified_item":"string","physical_format":"string","confidence":"high|low|unknown","questions":[{"id":"string","question":"string","type":"yesno|choice","options":["string"]}]}`;
 
-    const identifySchema = {
-      type: 'object',
-      properties: {
-        identified_item: { type: 'string' },
-        physical_format: { type: 'string' },
-        confidence: { type: 'string', enum: ['high', 'low', 'unknown'] },
-        questions: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              question: { type: 'string' },
-              type: { type: 'string', enum: ['yesno', 'choice'] },
-              options: { type: 'array', items: { type: 'string' } }
-            },
-            required: ['id', 'question', 'type']
-          }
-        }
-      },
-      required: ['identified_item', 'questions']
-    };
+    let messages;
+    if (allImageUrls.length) {
+      messages = [{
+        role: 'user',
+        content: [
+          { type: 'text', text: systemPrompt },
+          ...allImageUrls.map(url => ({ type: 'image_url', image_url: { url, detail: 'high' } }))
+        ]
+      }];
+    } else {
+      messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Identify: "${text_query}"` }
+      ];
+    }
 
-    const identifyPayload = {
-      prompt: identifyPrompt,
-      response_json_schema: identifySchema,
-      model: 'gemini_3_flash',
-    };
-    if (allImageUrls.length) identifyPayload.file_urls = allImageUrls;
+    const identifyRes = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages,
+      response_format: { type: 'json_object' },
+    });
 
-    const identifyResult = await base44.integrations.Core.InvokeLLM(identifyPayload);
+    const identifyResult = JSON.parse(identifyRes.choices?.[0]?.message?.content || '{}');
 
-    // Filter trading-card questions for die-cast items
     const format = (identifyResult.physical_format || '').toLowerCase();
     const identified = identifyResult.identified_item || '';
     const CARD_KEYWORDS = ['corner', 'centering', 'holo', 'surface scratch', 'print line', 'psa', 'bgs', 'grading', 'grade', 'edge wear'];
@@ -93,7 +75,6 @@ Set confidence to "high" if certain, "low" if making a general guess.`;
       }
     }
 
-    // Return identification result + questions for user to answer
     return Response.json({
       phase: 'questions',
       identified_item: identified,

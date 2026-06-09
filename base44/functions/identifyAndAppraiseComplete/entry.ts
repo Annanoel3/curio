@@ -1,27 +1,23 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import OpenAI from 'npm:openai';
 
-// Does identify + appraise in ONE server-side chain.
-// phase=identify → runs identify only, returns questions (fast, ~8s)
-// phase=appraise → runs appraise only using already-identified item name (fast, ~8s)
-// Both are text-only when possible to stay fast.
+// phase=identify → gpt-4o (vision, no web search needed — fast)
+// phase=appraise → gpt-4o-search-preview (web search for real market prices)
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const openai = new OpenAI({ apiKey: Deno.env.get('OPENAI_API_KEY') });
 
     const body = await req.json();
     const { phase, image_urls, text_query, collection_type, condition_answers, identified_item, known_size, user_notes } = body;
 
     const allImageUrls = image_urls?.length ? image_urls : [];
-
     const contextLine = collection_type ? `The user collects: ${collection_type}.` : '';
     const knownSizeLine = known_size ? `CONFIRMED SIZE: The user confirmed this item is ${known_size} tall.` : '';
-    const multiImageNote = allImageUrls.length > 1
-      ? `The user provided ${allImageUrls.length} photos of the same item. Use all images together.`
-      : '';
+    const multiImageNote = allImageUrls.length > 1 ? `The user provided ${allImageUrls.length} photos of the same item. Use all images together.` : '';
 
     // ── PHASE: IDENTIFY ──────────────────────────────────────────────────
     if (phase === 'identify') {
@@ -29,66 +25,55 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Provide image_urls or text_query' }, { status: 400 });
       }
 
-      const userNotesLine = user_notes ? `\nIMPORTANT — User-provided details (treat as confirmed ground truth, override visual assumptions with these): "${user_notes}"` : '';
+      const userNotesLine = user_notes ? `\nIMPORTANT — User-provided details (treat as confirmed ground truth): "${user_notes}"` : '';
 
-      const identifyPrompt = allImageUrls.length
-        ? `${contextLine} ${knownSizeLine} ${multiImageNote}${userNotesLine}
-You are an expert collectibles identifier with deep knowledge of antiques, flatware, ceramics, die-cast, and collectibles.
+      const systemPrompt = allImageUrls.length
+        ? `You are an expert collectibles identifier with deep knowledge of antiques, flatware, ceramics, die-cast, and collectibles.
+${contextLine} ${knownSizeLine} ${multiImageNote}${userNotesLine}
 
 STEP 1 — MANDATORY PHYSICAL COUNT (do this before anything else):
-- Count every countable structural feature: tines on a fork, petals on a flower, legs, panels, etc. State the exact count explicitly (e.g. "I count 5 tines"). If the user's notes confirm a count, use that as ground truth.
+- Count every countable structural feature: tines on a fork, petals on a flower, legs, panels, etc. State the exact count explicitly. If the user's notes confirm a count, use that as ground truth.
 - A standard dinner fork has 4 tines. A 5-tine fork is a RARE, distinct collectible variant — do NOT assume 4 tines unless you have counted 4.
-- For any non-standard count, flag it prominently — it IS the key identifier.
 
 STEP 2 — VISUAL ANALYSIS: Examine every detail: shape, silhouette, surface decoration, base/foot style, any marks/signatures/hallmarks (read ALL text exactly), color, finish, unusual features.
 
-STEP 3 — IDENTIFY the EXACT model/variant using your physical count + visual analysis. Include brand, exact model name, model number if known, year/series. Do NOT default to the most common version if physical features suggest otherwise.
+STEP 3 — IDENTIFY the EXACT model/variant. Include brand, exact model name, model number if known, year/series. Do NOT default to the most common version if physical features suggest otherwise.
 
 STEP 4 — physical_format: one of "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "pottery/ceramics", "flatware/cutlery", "other".
 
-STEP 5 — Generate 2-3 condition questions that directly affect resale value for THIS specific identified item.
-- Only ask about SIZE if you have confirmed knowledge that this exact item was produced in multiple distinct sizes that sell for different prices. If in doubt, do NOT ask about size.
-- Ask questions that are specific to the item's format and known collector concerns — not generic questions that could apply to anything.
+STEP 5 — Generate 2-3 condition questions that directly affect resale value. Only ask about SIZE if you have confirmed knowledge this exact item was produced in multiple distinct sizes that sell for different prices.
 
-Set confidence to "high" if certain of exact model/variant, "low" if only brand/category is clear.`
-        : `${contextLine} ${knownSizeLine}${userNotesLine}
-You are an expert collectibles identifier. The user described: "${text_query}".
-CRITICAL: If the description or user notes mention any non-standard physical feature (e.g. "5 tines", "5 prong", unusual size, rare marking) — treat this as confirmed ground truth and identify the item AS that specific variant, not the standard version.
-1. Identify the EXACT item (brand, model name, year/series, variant). Be specific.
+Set confidence to "high" if certain of exact model/variant, "low" if only brand/category is clear.
+Respond ONLY with valid JSON: {"identified_item":"string","physical_format":"string","confidence":"high|low|unknown","questions":[{"id":"string","question":"string","type":"yesno|choice","options":["string"]}]}`
+        : `You are an expert collectibles identifier. ${contextLine} ${knownSizeLine}${userNotesLine}
+The user described: "${text_query}".
+CRITICAL: If the description mentions any non-standard physical feature (e.g. "5 tines", "5 prong") — treat as confirmed ground truth and identify AS that specific variant.
+1. Identify the EXACT item (brand, model name, year/series, variant).
 2. Determine the physical_format.
-3. Generate 2-3 condition questions that directly affect resale value for THIS specific item. Only ask about size if you have confirmed knowledge this exact item was made in multiple sizes with different values. If in doubt, skip the size question.
-Set confidence to "high" if certain, "low" if making a general guess.`;
+3. Generate 2-3 condition questions that directly affect resale value. Only ask about size if this exact item was made in multiple sizes with different values.
+Set confidence to "high" if certain, "low" if making a general guess.
+Respond ONLY with valid JSON: {"identified_item":"string","physical_format":"string","confidence":"high|low|unknown","questions":[{"id":"string","question":"string","type":"yesno|choice","options":["string"]}]}`;
 
-      const identifySchema = {
-        type: 'object',
-        properties: {
-          identified_item: { type: 'string' },
-          physical_format: { type: 'string' },
-          confidence: { type: 'string', enum: ['high', 'low', 'unknown'] },
-          questions: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                question: { type: 'string' },
-                type: { type: 'string', enum: ['yesno', 'choice'] },
-                options: { type: 'array', items: { type: 'string' } }
-              },
-              required: ['id', 'question', 'type']
-            }
-          }
-        },
-        required: ['identified_item', 'questions']
-      };
+      let messages;
+      if (allImageUrls.length) {
+        messages = [{
+          role: 'user',
+          content: [
+            { type: 'text', text: systemPrompt },
+            ...allImageUrls.map(url => ({ type: 'image_url', image_url: { url, detail: 'high' } }))
+          ]
+        }];
+      } else {
+        messages = [{ role: 'user', content: systemPrompt }];
+      }
 
-      const identifyPayload = {
-        prompt: identifyPrompt,
-        response_json_schema: identifySchema,
-      };
-      if (allImageUrls.length) identifyPayload.file_urls = allImageUrls;
+      const identifyRes = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages,
+        response_format: { type: 'json_object' },
+      });
 
-      const identifyResult = await base44.integrations.Core.InvokeLLM(identifyPayload);
+      const identifyResult = JSON.parse(identifyRes.choices?.[0]?.message?.content || '{}');
 
       const format = (identifyResult.physical_format || '').toLowerCase();
       const identified = identifyResult.identified_item || '';
@@ -129,64 +114,32 @@ Set confidence to "high" if certain, "low" if making a general guess.`;
         : '';
       const userNotesLine = user_notes ? `Additional user notes (treat as ground truth): "${user_notes}".` : '';
 
-      const appraisePrompt = `You are a specialist collectibles appraiser writing catalog entries for a collector's database.
+      const appraisePrompt = `You are a specialist collectibles appraiser. ${contextLine} ${answersLine} ${userNotesLine}
 
-Item: "${itemName}". ${answersLine} ${userNotesLine} ${contextLine}
+Item: "${itemName}"
 
-TITLE RULES — be SPECIFIC and collector-grade, not generic:
+Search eBay sold listings, Mercari, and StockX (if applicable) for recent actual sold prices of this EXACT item and variant.
+
+TITLE RULES — be specific and collector-grade:
 - Include brand/manufacturer, exact series name, exact model name, year, color, and packaging type.
-- Example good title: "Matchbox Moving Parts 2004 Honda S2000 — White, Blister Carded"
-- Example bad title: "2004 Honda S2000 Toy Car"
-- NEVER use generic words like "Toy Car", "Collectible", "Figurine" as the only descriptor — those must accompany specific identifiers.
+- Example good: "Matchbox Moving Parts 2004 Honda S2000 — White, Blister Carded"
+- NEVER use generic words like "Toy Car" or "Collectible" as the only descriptor.
 
-NOTES RULES — write for a collector, not a general audience (under 80 words):
-- Mention the specific series, what makes this model notable or collectible, any special features (moving parts, livery, variant color, etc.).
-- Mention packaging state if known.
-- Do NOT write generic filler like "highly sought after" or "enhances its value".
+NOTES — write for a collector (under 80 words): mention the specific series, what makes this notable, special features, packaging state if known.
 
-Give estimated_value (median eBay/Mercari sold price), value_low, value_high, title, 3-6 lowercase tags, notes, appraisal_reasoning (1-2 sentences). Adjust for condition above.`;
+Provide: estimated_value (median sold price), value_low, value_high, title, 3-6 lowercase tags, notes, appraisal_reasoning (1-2 sentences). Adjust all values for the confirmed condition.
 
-      const appraiseSchema = {
-        type: 'object',
-        properties: {
-          title: { type: 'string' },
-          tags: { type: 'array', items: { type: 'string' } },
-          notes: { type: 'string' },
-          value_low: { type: 'number' },
-          value_high: { type: 'number' },
-          estimated_value: { type: 'number' },
-          appraisal_reasoning: { type: 'string' },
-          attributes: { type: 'object', additionalProperties: { type: 'string' } }
-        },
-        required: ['title', 'tags', 'notes', 'value_low', 'value_high', 'estimated_value']
-      };
+Respond ONLY with valid JSON: {"title":"string","tags":["string"],"notes":"string","value_low":0,"value_high":0,"estimated_value":0,"appraisal_reasoning":"string"}`;
 
-      const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-search-preview',
-          messages: [
-            {
-              role: 'user',
-              content: appraisePrompt + `\n\nRespond ONLY with a valid JSON object matching this schema: ${JSON.stringify(appraiseSchema)}. No markdown, no explanation, just JSON.`
-            }
-          ],
-          web_search_options: {},
-        }),
+      const appraiseRes = await openai.chat.completions.create({
+        model: 'gpt-4o-search-preview',
+        messages: [{ role: 'user', content: appraisePrompt }],
+        web_search_options: {},
       });
 
-      const openaiData = await openaiRes.json();
-      if (!openaiRes.ok) {
-        throw new Error(openaiData.error?.message || 'OpenAI request failed');
-      }
-
-      const rawContent = openaiData.choices?.[0]?.message?.content || '';
-      const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('No JSON found in OpenAI response');
+      const raw = appraiseRes.choices?.[0]?.message?.content || '';
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No JSON in OpenAI response');
       const result = JSON.parse(jsonMatch[0]);
 
       return Response.json({ appraisal: result });
