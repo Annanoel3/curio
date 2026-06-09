@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Does identify + appraise in ONE server-side chain.
 // phase=identify → runs identify only, returns questions (fast, ~8s)
