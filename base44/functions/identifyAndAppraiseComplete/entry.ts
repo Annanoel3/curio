@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 // Does identify + appraise in ONE server-side chain.
 // phase=identify → runs identify only, returns questions (fast, ~8s)
@@ -161,12 +161,33 @@ Give estimated_value (median eBay/Mercari sold price), value_low, value_high, ti
         required: ['title', 'tags', 'notes', 'value_low', 'value_high', 'estimated_value']
       };
 
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: appraisePrompt,
-        response_json_schema: appraiseSchema,
-        add_context_from_internet: true,
-        model: 'gpt_5_4',
+      const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-search-preview',
+          messages: [
+            {
+              role: 'user',
+              content: appraisePrompt + `\n\nRespond ONLY with a valid JSON object matching this schema: ${JSON.stringify(appraiseSchema)}. No markdown, no explanation, just JSON.`
+            }
+          ],
+          web_search_options: {},
+        }),
       });
+
+      const openaiData = await openaiRes.json();
+      if (!openaiRes.ok) {
+        throw new Error(openaiData.error?.message || 'OpenAI request failed');
+      }
+
+      const rawContent = openaiData.choices?.[0]?.message?.content || '';
+      const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No JSON found in OpenAI response');
+      const result = JSON.parse(jsonMatch[0]);
 
       return Response.json({ appraisal: result });
     }
