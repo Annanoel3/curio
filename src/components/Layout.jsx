@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/AuthContext";
+import AdManager from './shared/AdManager';
 
 export default function Layout() {
   const location = useLocation();
@@ -32,6 +33,7 @@ export default function Layout() {
         paddingRight: "env(safe-area-inset-right)",
       }}
     >
+      <AdManager />
       {/* Desktop header */}
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/80 border-b border-border/60" style={{ paddingTop: "env(safe-area-inset-top)" }}>
         <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
