@@ -33,29 +33,34 @@ Set confidence to "high" if certain of exact model, "low" if only brand/category
 
 Respond ONLY with valid JSON: {"identified_item":"string","physical_format":"string","confidence":"high|low|unknown","questions":[{"id":"string","question":"string","type":"yesno|choice","options":["string"]}]}`;
 
+    const webSearchNote = '\n\nSearch the web to confirm the exact model name, series, and year — especially for rare or obscure variants.';
+
     let messages;
     if (allImageUrls.length) {
       messages = [{
         role: 'user',
         content: [
-          { type: 'text', text: systemPrompt },
+          { type: 'text', text: systemPrompt + webSearchNote },
           ...allImageUrls.map(url => ({ type: 'image_url', image_url: { url, detail: 'high' } }))
         ]
       }];
     } else {
-      messages = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Identify this item: "${text_query}"` }
-      ];
+      messages = [{
+        role: 'user',
+        content: systemPrompt + `\n\nIdentify this item: "${text_query}"` + webSearchNote
+      }];
     }
 
     const res = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-search-preview',
       messages,
-      response_format: { type: 'json_object' },
+      web_search_options: {},
     });
 
-    const result = JSON.parse(res.choices?.[0]?.message?.content || '{}');
+    const raw = res.choices?.[0]?.message?.content || '';
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON in identify response');
+    const result = JSON.parse(jsonMatch[0]);
 
     const identified = result.identified_item || '';
     const format = (result.physical_format || '').toLowerCase();

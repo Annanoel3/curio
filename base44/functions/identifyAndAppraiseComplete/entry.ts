@@ -59,21 +59,25 @@ Respond ONLY with valid JSON: {"identified_item":"string","physical_format":"str
         messages = [{
           role: 'user',
           content: [
-            { type: 'text', text: systemPrompt },
+            { type: 'text', text: systemPrompt + '\n\nAlso search the web to confirm the exact model name, series, and year if you are not 100% certain from the image alone.' },
             ...allImageUrls.map(url => ({ type: 'image_url', image_url: { url, detail: 'high' } }))
           ]
         }];
       } else {
-        messages = [{ role: 'user', content: systemPrompt }];
+        messages = [{ role: 'user', content: systemPrompt + '\n\nSearch the web to confirm the exact model name, series, and year.' }];
       }
 
+      // Use gpt-4o-search-preview so the model can web-search to confirm rare/obscure items
       const identifyRes = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-4o-search-preview',
         messages,
-        response_format: { type: 'json_object' },
+        web_search_options: {},
       });
 
-      const identifyResult = JSON.parse(identifyRes.choices?.[0]?.message?.content || '{}');
+      const identifyRaw = identifyRes.choices?.[0]?.message?.content || '';
+      const identifyJsonMatch = identifyRaw.match(/\{[\s\S]*\}/);
+      if (!identifyJsonMatch) throw new Error('No JSON in identify response');
+      const identifyResult = JSON.parse(identifyJsonMatch[0]);
 
       const format = (identifyResult.physical_format || '').toLowerCase();
       const identified = identifyResult.identified_item || '';

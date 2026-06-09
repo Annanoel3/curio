@@ -32,29 +32,34 @@ Generate 2-3 condition questions that affect resale value. For items made in mul
 Set confidence to "high" if certain, "low" if only brand/category is clear.
 Respond ONLY with valid JSON: {"identified_item":"string","physical_format":"string","confidence":"high|low|unknown","questions":[{"id":"string","question":"string","type":"yesno|choice","options":["string"]}]}`;
 
+    const webSearchNote = '\n\nSearch the web to confirm the exact model name, series, and year — especially for rare or obscure variants.';
+
     let messages;
     if (allImageUrls.length) {
       messages = [{
         role: 'user',
         content: [
-          { type: 'text', text: systemPrompt },
+          { type: 'text', text: systemPrompt + webSearchNote },
           ...allImageUrls.map(url => ({ type: 'image_url', image_url: { url, detail: 'high' } }))
         ]
       }];
     } else {
-      messages = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Identify: "${text_query}"` }
-      ];
+      messages = [{
+        role: 'user',
+        content: systemPrompt + `\n\nIdentify: "${text_query}"` + webSearchNote
+      }];
     }
 
     const identifyRes = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-search-preview',
       messages,
-      response_format: { type: 'json_object' },
+      web_search_options: {},
     });
 
-    const identifyResult = JSON.parse(identifyRes.choices?.[0]?.message?.content || '{}');
+    const identifyRaw = identifyRes.choices?.[0]?.message?.content || '';
+    const identifyJsonMatch = identifyRaw.match(/\{[\s\S]*\}/);
+    if (!identifyJsonMatch) throw new Error('No JSON in identify response');
+    const identifyResult = JSON.parse(identifyJsonMatch[0]);
 
     const format = (identifyResult.physical_format || '').toLowerCase();
     const identified = identifyResult.identified_item || '';
