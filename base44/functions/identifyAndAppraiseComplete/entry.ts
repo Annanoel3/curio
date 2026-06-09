@@ -27,80 +27,96 @@ Deno.serve(async (req) => {
 
       const userNotesLine = user_notes ? `\nIMPORTANT — User-provided details (treat as confirmed ground truth): "${user_notes}"` : '';
 
-      const systemPrompt = allImageUrls.length
+      const visionPrompt = allImageUrls.length
         ? `You are an expert collectibles identifier with deep knowledge of antiques, flatware, ceramics, die-cast, and collectibles.
 ${contextLine} ${knownSizeLine} ${multiImageNote}${userNotesLine}
 
-STEP 1 — MANDATORY PHYSICAL COUNT (do this before anything else):
-- Count every countable structural feature: tines on a fork, petals on a flower, legs, panels, etc. State the exact count explicitly. If the user's notes confirm a count, use that as ground truth.
-- A standard dinner fork has 4 tines. A 5-tine fork is a RARE, distinct collectible variant — do NOT assume 4 tines unless you have counted 4.
+Your job is to produce a DETAILED VISUAL DESCRIPTION of this item so a web search can find the exact match. Do NOT guess a model name — describe what you literally see.
 
-STEP 2 — VISUAL ANALYSIS: Examine every detail: shape, silhouette, surface decoration, base/foot style, any marks/signatures/hallmarks (read ALL text exactly), color, finish, unusual features.
+Describe in detail:
+1. Overall shape and body style (e.g. VW microbus, muscle car, pickup truck, fork with N tines, ceramic vase with handles, etc.)
+2. Color(s) — be specific (magenta/hot pink, metallic blue, etc.)
+3. Any markings, logos, text, or tampos visible
+4. Wheel type if applicable (redline, blackwall, Real Riders, etc.)
+5. Surfboards, accessories, or unusual features attached
+6. Packaging if present (blister card, box, loose)
+7. Approximate era/decade based on style
+8. Any other distinctive features
 
-STEP 3 — IDENTIFY the EXACT model/variant. Include brand, exact model name, model number if known, year/series. Do NOT default to the most common version if physical features suggest otherwise.
+Also output your best guess at the item identity (brand, model, year) and a physical_format.
 
-STEP 4 — physical_format: one of "blister-carded die-cast", "loose die-cast", "trading card", "action figure in box", "pottery/ceramics", "flatware/cutlery", "other".
+Respond ONLY with valid JSON: {"visual_description":"string","best_guess":"string","physical_format":"string"}`
+        : null;
 
-STEP 5 — Generate 2-3 condition questions that directly affect resale value. Only ask about SIZE if you have confirmed knowledge this exact item was produced in multiple distinct sizes that sell for different prices.
-
-Set confidence to "high" if certain of exact model/variant, "low" if only brand/category is clear.
-Respond ONLY with valid JSON: {"identified_item":"string","physical_format":"string","confidence":"high|low|unknown","questions":[{"id":"string","question":"string","type":"yesno|choice","options":["string"]}]}`
-        : `You are an expert collectibles identifier. ${contextLine} ${knownSizeLine}${userNotesLine}
+      const textPrompt = !allImageUrls.length
+        ? `You are an expert collectibles identifier. ${contextLine} ${knownSizeLine}${userNotesLine}
 The user described: "${text_query}".
 CRITICAL: If the description mentions any non-standard physical feature (e.g. "5 tines", "5 prong") — treat as confirmed ground truth and identify AS that specific variant.
 1. Identify the EXACT item (brand, model name, year/series, variant).
 2. Determine the physical_format.
 3. Generate 2-3 condition questions that directly affect resale value. Only ask about size if this exact item was made in multiple sizes with different values.
 Set confidence to "high" if certain, "low" if making a general guess.
-Respond ONLY with valid JSON: {"identified_item":"string","physical_format":"string","confidence":"high|low|unknown","questions":[{"id":"string","question":"string","type":"yesno|choice","options":["string"]}]}`;
+Respond ONLY with valid JSON: {"identified_item":"string","physical_format":"string","confidence":"high|low|unknown","questions":[{"id":"string","question":"string","type":"yesno|choice","options":["string"]}]}`
+        : null;
 
       let identifyResult;
 
       if (allImageUrls.length) {
-        // Step 1: Use gpt-4o (vision) to identify from image
-        const visionMessages = [{
-          role: 'user',
-          content: [
-            { type: 'text', text: systemPrompt },
-            ...allImageUrls.map(url => ({ type: 'image_url', image_url: { url, detail: 'high' } }))
-          ]
-        }];
+        // Step 1: gpt-4o describes the item visually in detail (no guessing model name)
         const visionRes = await openai.chat.completions.create({
           model: 'gpt-4o',
-          messages: visionMessages,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text: visionPrompt },
+              ...allImageUrls.map(url => ({ type: 'image_url', image_url: { url, detail: 'high' } }))
+            ]
+          }],
           response_format: { type: 'json_object' },
         });
         const visionResult = JSON.parse(visionRes.choices?.[0]?.message?.content || '{}');
+        const visualDesc = visionResult.visual_description || '';
+        const bestGuess = visionResult.best_guess || '';
+        const physicalFormat = visionResult.physical_format || 'other';
 
-        // Step 2: If confidence is low or we have a name, use gpt-4o-search-preview to refine the exact model
-        const roughName = visionResult.identified_item || '';
-        if (roughName) {
-          const refineRes = await openai.chat.completions.create({
-            model: 'gpt-4o-search-preview',
-            messages: [{
-              role: 'user',
-              content: `A collectibles expert visually identified an item as: "${roughName}". ${contextLine}
-Search the web (eBay, collector databases, manufacturer catalogs) to confirm or refine the EXACT model name, series name, year, color, and variant. Return the most accurate, specific identification possible.
-Respond ONLY with valid JSON: {"identified_item":"string","physical_format":"string","confidence":"high|low|unknown"}`
-            }],
-            web_search_options: {},
-          });
-          const refineRaw = refineRes.choices?.[0]?.message?.content || '';
-          const refineMatch = refineRaw.match(/\{[\s\S]*\}/);
-          if (refineMatch) {
-            const refined = JSON.parse(refineMatch[0]);
-            identifyResult = { ...visionResult, ...refined, questions: visionResult.questions };
-          } else {
-            identifyResult = visionResult;
-          }
+        // Step 2: gpt-4o-search-preview uses the rich visual description + best guess to find exact match
+        const refineRes = await openai.chat.completions.create({
+          model: 'gpt-4o-search-preview',
+          messages: [{
+            role: 'user',
+            content: `You are a world-class collectibles identification expert. ${contextLine}
+
+A visual analysis of a collectible item produced this description:
+"${visualDesc}"
+
+The vision model's best guess was: "${bestGuess}"
+
+Using this description, search eBay sold listings, collector databases (hwcollectorsnews.com, redline-hotwheels.com, hobbyDB, Worthpoint), and manufacturer catalogs to find the EXACT match.
+
+CRITICAL RULES:
+- The visual description is ground truth — do NOT ignore distinctive features like body shape, color, surfboards, wheel type.
+- A pink/magenta VW microbus with surfboards sticking out the rear is a Hot Wheels Beach Bomb — search for it specifically.
+- Do NOT assume the most common version. Rare variants (rear-loading vs side-loading, specific colors) can differ in value by 100x.
+- If the visual description and best guess conflict, trust the visual description.
+
+Generate 2-3 condition questions that directly affect resale value for this specific item.
+
+Respond ONLY with valid JSON: {"identified_item":"string","physical_format":"string","confidence":"high|low|unknown","questions":[{"id":"string","question":"string","type":"yesno|choice","options":["string"]}]}`
+          }],
+          web_search_options: {},
+        });
+        const refineRaw = refineRes.choices?.[0]?.message?.content || '';
+        const refineMatch = refineRaw.match(/\{[\s\S]*\}/);
+        if (refineMatch) {
+          identifyResult = { ...JSON.parse(refineMatch[0]), physical_format: physicalFormat };
         } else {
-          identifyResult = visionResult;
+          identifyResult = { identified_item: bestGuess, physical_format: physicalFormat, confidence: 'low', questions: [] };
         }
       } else {
         // Text-only: use gpt-4o-search-preview directly
         const searchRes = await openai.chat.completions.create({
           model: 'gpt-4o-search-preview',
-          messages: [{ role: 'user', content: systemPrompt + '\n\nSearch the web to confirm the exact model name, series, and year.' }],
+          messages: [{ role: 'user', content: textPrompt + '\n\nSearch the web to confirm the exact model name, series, and year.' }],
           web_search_options: {},
         });
         const searchRaw = searchRes.choices?.[0]?.message?.content || '';
