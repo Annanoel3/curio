@@ -33,34 +33,59 @@ Set confidence to "high" if certain of exact model, "low" if only brand/category
 
 Respond ONLY with valid JSON: {"identified_item":"string","physical_format":"string","confidence":"high|low|unknown","questions":[{"id":"string","question":"string","type":"yesno|choice","options":["string"]}]}`;
 
-    const webSearchNote = '\n\nSearch the web to confirm the exact model name, series, and year — especially for rare or obscure variants.';
+    let result;
 
-    let messages;
     if (allImageUrls.length) {
-      messages = [{
-        role: 'user',
-        content: [
-          { type: 'text', text: systemPrompt + webSearchNote },
-          ...allImageUrls.map(url => ({ type: 'image_url', image_url: { url, detail: 'high' } }))
-        ]
-      }];
+      // Step 1: vision identification with gpt-4o
+      const visionRes = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: systemPrompt },
+            ...allImageUrls.map(url => ({ type: 'image_url', image_url: { url, detail: 'high' } }))
+          ]
+        }],
+        response_format: { type: 'json_object' },
+      });
+      const visionResult = JSON.parse(visionRes.choices?.[0]?.message?.content || '{}');
+
+      // Step 2: web-search refinement with gpt-4o-search-preview
+      const roughName = visionResult.identified_item || '';
+      if (roughName) {
+        const refineRes = await openai.chat.completions.create({
+          model: 'gpt-4o-search-preview',
+          messages: [{
+            role: 'user',
+            content: `A collectibles expert visually identified an item as: "${roughName}". ${contextLine}
+Search the web to confirm or refine the EXACT model name, series, year, color, and variant.
+Respond ONLY with valid JSON: {"identified_item":"string","physical_format":"string","confidence":"high|low|unknown"}`
+          }],
+          web_search_options: {},
+        });
+        const refineRaw = refineRes.choices?.[0]?.message?.content || '';
+        const refineMatch = refineRaw.match(/\{[\s\S]*\}/);
+        if (refineMatch) {
+          const refined = JSON.parse(refineMatch[0]);
+          result = { ...visionResult, ...refined, questions: visionResult.questions };
+        } else {
+          result = visionResult;
+        }
+      } else {
+        result = visionResult;
+      }
     } else {
-      messages = [{
-        role: 'user',
-        content: systemPrompt + `\n\nIdentify this item: "${text_query}"` + webSearchNote
-      }];
+      // Text-only: use gpt-4o-search-preview directly
+      const searchRes = await openai.chat.completions.create({
+        model: 'gpt-4o-search-preview',
+        messages: [{ role: 'user', content: systemPrompt + `\n\nIdentify this item: "${text_query}". Search the web to confirm the exact model name, series, and year.` }],
+        web_search_options: {},
+      });
+      const raw = searchRes.choices?.[0]?.message?.content || '';
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No JSON in identify response');
+      result = JSON.parse(jsonMatch[0]);
     }
-
-    const res = await openai.chat.completions.create({
-      model: 'gpt-4o-search-preview',
-      messages,
-      web_search_options: {},
-    });
-
-    const raw = res.choices?.[0]?.message?.content || '';
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON in identify response');
-    const result = JSON.parse(jsonMatch[0]);
 
     const identified = result.identified_item || '';
     const format = (result.physical_format || '').toLowerCase();

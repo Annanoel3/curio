@@ -54,30 +54,60 @@ CRITICAL: If the description mentions any non-standard physical feature (e.g. "5
 Set confidence to "high" if certain, "low" if making a general guess.
 Respond ONLY with valid JSON: {"identified_item":"string","physical_format":"string","confidence":"high|low|unknown","questions":[{"id":"string","question":"string","type":"yesno|choice","options":["string"]}]}`;
 
-      let messages;
+      let identifyResult;
+
       if (allImageUrls.length) {
-        messages = [{
+        // Step 1: Use gpt-4o (vision) to identify from image
+        const visionMessages = [{
           role: 'user',
           content: [
-            { type: 'text', text: systemPrompt + '\n\nAlso search the web to confirm the exact model name, series, and year if you are not 100% certain from the image alone.' },
+            { type: 'text', text: systemPrompt },
             ...allImageUrls.map(url => ({ type: 'image_url', image_url: { url, detail: 'high' } }))
           ]
         }];
+        const visionRes = await openai.chat.completions.create({
+          model: 'gpt-4o',
+          messages: visionMessages,
+          response_format: { type: 'json_object' },
+        });
+        const visionResult = JSON.parse(visionRes.choices?.[0]?.message?.content || '{}');
+
+        // Step 2: If confidence is low or we have a name, use gpt-4o-search-preview to refine the exact model
+        const roughName = visionResult.identified_item || '';
+        if (roughName) {
+          const refineRes = await openai.chat.completions.create({
+            model: 'gpt-4o-search-preview',
+            messages: [{
+              role: 'user',
+              content: `A collectibles expert visually identified an item as: "${roughName}". ${contextLine}
+Search the web (eBay, collector databases, manufacturer catalogs) to confirm or refine the EXACT model name, series name, year, color, and variant. Return the most accurate, specific identification possible.
+Respond ONLY with valid JSON: {"identified_item":"string","physical_format":"string","confidence":"high|low|unknown"}`
+            }],
+            web_search_options: {},
+          });
+          const refineRaw = refineRes.choices?.[0]?.message?.content || '';
+          const refineMatch = refineRaw.match(/\{[\s\S]*\}/);
+          if (refineMatch) {
+            const refined = JSON.parse(refineMatch[0]);
+            identifyResult = { ...visionResult, ...refined, questions: visionResult.questions };
+          } else {
+            identifyResult = visionResult;
+          }
+        } else {
+          identifyResult = visionResult;
+        }
       } else {
-        messages = [{ role: 'user', content: systemPrompt + '\n\nSearch the web to confirm the exact model name, series, and year.' }];
+        // Text-only: use gpt-4o-search-preview directly
+        const searchRes = await openai.chat.completions.create({
+          model: 'gpt-4o-search-preview',
+          messages: [{ role: 'user', content: systemPrompt + '\n\nSearch the web to confirm the exact model name, series, and year.' }],
+          web_search_options: {},
+        });
+        const searchRaw = searchRes.choices?.[0]?.message?.content || '';
+        const searchMatch = searchRaw.match(/\{[\s\S]*\}/);
+        if (!searchMatch) throw new Error('No JSON in identify response');
+        identifyResult = JSON.parse(searchMatch[0]);
       }
-
-      // Use gpt-4o-search-preview so the model can web-search to confirm rare/obscure items
-      const identifyRes = await openai.chat.completions.create({
-        model: 'gpt-4o-search-preview',
-        messages,
-        web_search_options: {},
-      });
-
-      const identifyRaw = identifyRes.choices?.[0]?.message?.content || '';
-      const identifyJsonMatch = identifyRaw.match(/\{[\s\S]*\}/);
-      if (!identifyJsonMatch) throw new Error('No JSON in identify response');
-      const identifyResult = JSON.parse(identifyJsonMatch[0]);
 
       const format = (identifyResult.physical_format || '').toLowerCase();
       const identified = identifyResult.identified_item || '';
