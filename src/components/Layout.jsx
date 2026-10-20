@@ -11,6 +11,11 @@ import AdManager from './shared/AdManager';
 export default function Layout() {
   const location = useLocation();
   const { user } = useAuth();
+
+  React.useEffect(() => {
+    if (!user?.id) return;
+    base44.auth.updateMe({ last_seen_at: new Date().toISOString() });
+  }, [user?.id]);
   const initials = (user?.full_name || user?.email || "?")
     .split(" ")
     .map((s) => s[0])
